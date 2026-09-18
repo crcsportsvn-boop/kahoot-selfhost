@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Triangle, Diamond, Circle, Square, Check, X, Send } from 'lucide-react';
 import { PublicQuestion } from '@/types';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface QuestionInputProps {
   question: PublicQuestion;
@@ -11,6 +12,7 @@ interface QuestionInputProps {
 }
 
 export default function QuestionInput({ question, onAnswer, disabled = false }: QuestionInputProps) {
+  const { lang } = useLanguage();
   const [blankInput, setBlankInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -83,7 +85,7 @@ export default function QuestionInput({ question, onAnswer, disabled = false }: 
       : ['A', 'B', 'C', 'D'];
 
     return (
-      <div className="w-full h-full p-3 grid grid-cols-2 gap-3 sm:gap-4 select-none">
+      <div className="w-full h-full p-3 sm:p-4 grid grid-cols-2 gap-3 sm:gap-4 select-none">
         {optionsToRender.map((opt, idx) => {
           const config = shapeConfigs[idx % shapeConfigs.length];
           const Icon = config.icon;
@@ -109,10 +111,13 @@ export default function QuestionInput({ question, onAnswer, disabled = false }: 
     );
   }
 
-  // 2. True / False (Green True, Red False)
+  // 2. Pure True / False without mixed language
   if (question.type === 'true_false') {
-    const trueOpt = question.options?.[0] || 'Đúng (True)';
-    const falseOpt = question.options?.[1] || 'Sai (False)';
+    const displayTrue = lang === 'vi' ? 'Đúng' : 'True';
+    const displayFalse = lang === 'vi' ? 'Sai' : 'False';
+
+    const rawTrueOpt = question.options?.[0] || displayTrue;
+    const rawFalseOpt = question.options?.[1] || displayFalse;
 
     return (
       <div className="w-full h-full p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 select-none">
@@ -120,26 +125,26 @@ export default function QuestionInput({ question, onAnswer, disabled = false }: 
         <button
           type="button"
           disabled={disabled}
-          onClick={() => handleSelectAnswer(trueOpt)}
-          className="flex flex-col items-center justify-center p-8 rounded-3xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 active:scale-95 text-white font-bold shadow-xl border border-emerald-400/30 transition disabled:opacity-50 cursor-pointer min-h-[140px] sm:min-h-[220px]"
+          onClick={() => handleSelectAnswer(rawTrueOpt)}
+          className="flex flex-col items-center justify-center p-8 rounded-3xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 active:scale-95 text-white font-black shadow-xl border border-emerald-400/30 transition disabled:opacity-50 cursor-pointer min-h-[140px] sm:min-h-[220px]"
         >
           <div className="p-4 rounded-full bg-black/20 mb-3">
             <Check className="w-12 h-12 stroke-[3]" />
           </div>
-          <span className="text-2xl sm:text-3xl font-extrabold">{trueOpt}</span>
+          <span className="text-3xl sm:text-4xl font-extrabold">{displayTrue}</span>
         </button>
 
         {/* False Button */}
         <button
           type="button"
           disabled={disabled}
-          onClick={() => handleSelectAnswer(falseOpt)}
-          className="flex flex-col items-center justify-center p-8 rounded-3xl bg-red-600 hover:bg-red-500 active:bg-red-700 active:scale-95 text-white font-bold shadow-xl border border-red-400/30 transition disabled:opacity-50 cursor-pointer min-h-[140px] sm:min-h-[220px]"
+          onClick={() => handleSelectAnswer(rawFalseOpt)}
+          className="flex flex-col items-center justify-center p-8 rounded-3xl bg-red-600 hover:bg-red-500 active:bg-red-700 active:scale-95 text-white font-black shadow-xl border border-red-400/30 transition disabled:opacity-50 cursor-pointer min-h-[140px] sm:min-h-[220px]"
         >
           <div className="p-4 rounded-full bg-black/20 mb-3">
             <X className="w-12 h-12 stroke-[3]" />
           </div>
-          <span className="text-2xl sm:text-3xl font-extrabold">{falseOpt}</span>
+          <span className="text-3xl sm:text-4xl font-extrabold">{displayFalse}</span>
         </button>
       </div>
     );
@@ -151,7 +156,7 @@ export default function QuestionInput({ question, onAnswer, disabled = false }: 
       <form onSubmit={handleSubmitBlank} className="space-y-4">
         <div className="bg-slate-900/90 border-2 border-indigo-500/50 rounded-2xl p-4 shadow-2xl backdrop-blur-md">
           <label className="block text-xs font-semibold uppercase tracking-wider text-indigo-300 mb-2">
-            Nhập câu trả lời của bạn:
+            {lang === 'vi' ? 'Nhập câu trả lời của bạn:' : 'Enter your answer:'}
           </label>
           <input
             ref={inputRef}
@@ -159,7 +164,7 @@ export default function QuestionInput({ question, onAnswer, disabled = false }: 
             disabled={disabled}
             value={blankInput}
             onChange={(e) => setBlankInput(e.target.value)}
-            placeholder="Gõ từ khóa vào đây..."
+            placeholder={lang === 'vi' ? 'Gõ từ khóa vào đây...' : 'Type answer here...'}
             className="w-full text-xl sm:text-2xl font-bold text-white bg-transparent border-none outline-none focus:ring-0 placeholder:text-slate-500"
             autoComplete="off"
             autoCorrect="off"
@@ -172,7 +177,7 @@ export default function QuestionInput({ question, onAnswer, disabled = false }: 
           disabled={disabled || !blankInput.trim()}
           className="w-full py-4 sm:py-5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 active:scale-98 text-white font-extrabold text-lg sm:text-xl shadow-xl shadow-purple-900/40 flex items-center justify-center gap-3 transition disabled:opacity-50 cursor-pointer"
         >
-          <span>Gửi câu trả lời</span>
+          <span>{lang === 'vi' ? 'Gửi câu trả lời' : 'Submit Answer'}</span>
           <Send className="w-5 h-5" />
         </button>
       </form>

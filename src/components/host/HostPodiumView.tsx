@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti';
 import { Crown, Sparkles, Home, RotateCcw } from 'lucide-react';
 import { Player } from '@/types';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface HostPodiumViewProps {
   players: Player[];
@@ -14,6 +15,7 @@ interface HostPodiumViewProps {
 }
 
 export default function HostPodiumView({ players, quizTitle, onRestart }: HostPodiumViewProps) {
+  const { t, lang } = useLanguage();
   const { playPodiumFanfare } = useSoundEffects();
 
   const first = players[0];
@@ -55,10 +57,10 @@ export default function HostPodiumView({ players, quizTitle, onRestart }: HostPo
       <div className="text-center py-4 relative z-10">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs uppercase tracking-widest mb-3">
           <Sparkles className="w-4 h-4" />
-          <span>Vinh Danh Nhà Vô Địch</span>
+          <span>{t.podiumBadge}</span>
         </div>
         <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-white to-amber-200">
-          Bục Vinh Danh - Podium
+          {t.podiumTitle}
         </h1>
         <p className="text-sm text-purple-200/80 mt-1">{quizTitle}</p>
       </div>
@@ -74,13 +76,13 @@ export default function HostPodiumView({ players, quizTitle, onRestart }: HostPo
                 {second.nickname}
               </p>
               <span className="text-xs font-mono font-bold text-slate-300">
-                {second.score.toLocaleString()} đ
+                {second.score.toLocaleString()} {t.pointsWord}
               </span>
             </div>
             <div className="w-full h-48 sm:h-56 bg-gradient-to-t from-slate-700 via-slate-600 to-slate-500 rounded-t-3xl border-t-4 border-slate-300 shadow-2xl flex flex-col items-center justify-start pt-4">
               <span className="font-black text-4xl sm:text-6xl text-slate-900/50 font-mono">2</span>
               <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-200 mt-1">
-                Á Quân
+                {t.silverRank}
               </span>
             </div>
           </div>
@@ -98,13 +100,13 @@ export default function HostPodiumView({ players, quizTitle, onRestart }: HostPo
                 {first.nickname}
               </p>
               <span className="text-sm font-mono font-black text-yellow-200">
-                {first.score.toLocaleString()} điểm
+                {first.score.toLocaleString()} {t.pointsWord}
               </span>
             </div>
             <div className="w-full h-64 sm:h-76 bg-gradient-to-t from-amber-600 via-yellow-500 to-yellow-400 rounded-t-3xl border-t-4 border-yellow-200 shadow-2xl shadow-yellow-500/20 flex flex-col items-center justify-start pt-6">
               <span className="font-black text-5xl sm:text-7xl text-amber-900/40 font-mono">1</span>
               <span className="text-sm sm:text-base font-black uppercase tracking-wider text-amber-950 mt-1">
-                Quán Quân
+                {t.goldRank}
               </span>
             </div>
           </div>
@@ -119,13 +121,13 @@ export default function HostPodiumView({ players, quizTitle, onRestart }: HostPo
                 {third.nickname}
               </p>
               <span className="text-xs font-mono font-bold text-amber-300">
-                {third.score.toLocaleString()} đ
+                {third.score.toLocaleString()} {t.pointsWord}
               </span>
             </div>
             <div className="w-full h-36 sm:h-44 bg-gradient-to-t from-amber-900 via-amber-800 to-amber-700 rounded-t-3xl border-t-4 border-amber-600 shadow-2xl flex flex-col items-center justify-start pt-4">
               <span className="font-black text-3xl sm:text-5xl text-amber-950/50 font-mono">3</span>
               <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-amber-200 mt-1">
-                Hạng Ba
+                {t.bronzeRank}
               </span>
             </div>
           </div>
@@ -139,15 +141,15 @@ export default function HostPodiumView({ players, quizTitle, onRestart }: HostPo
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-white shadow-lg transition cursor-pointer"
         >
           <RotateCcw className="w-5 h-5" />
-          <span>Chơi Lại Vòng Này</span>
+          <span>{t.playAgainBtn}</span>
         </button>
 
         <Link
           href="/host/dashboard"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold text-slate-200 hover:text-white transition"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold text-slate-200 hover:text-white transition cursor-pointer"
         >
           <Home className="w-5 h-5" />
-          <span>Về Bảng Điều Khiển Host</span>
+          <span>{t.returnDashboardBtn}</span>
         </Link>
       </div>
     </div>

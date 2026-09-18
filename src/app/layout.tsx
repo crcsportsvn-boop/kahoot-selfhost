@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { Be_Vietnam_Pro } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
-const beVietnam = Be_Vietnam_Pro({
-  weight: ["400", "500", "600", "700", "800", "900"],
+const plusJakarta = Plus_Jakarta_Sans({
+  weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin", "vietnamese"],
   variable: "--font-sans",
   display: "swap",
@@ -22,10 +23,12 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
-      className={`${beVietnam.variable} h-full antialiased`}
+      className={`${plusJakarta.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans overflow-x-hidden bg-slate-950 text-slate-100">
-        {children}
+      <body className="min-h-full flex flex-col font-sans overflow-x-hidden bg-slate-950 text-slate-100 selection:bg-purple-500 selection:text-white">
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );

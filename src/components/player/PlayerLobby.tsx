@@ -3,6 +3,7 @@
 import React from 'react';
 import { Sparkles, Wifi, ShieldCheck } from 'lucide-react';
 import { Player } from '@/types';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface PlayerLobbyProps {
   player: Player;
@@ -10,6 +11,8 @@ interface PlayerLobbyProps {
 }
 
 export default function PlayerLobby({ player, pin }: PlayerLobbyProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="w-full max-w-full min-h-[calc(100dvh-3rem)] flex flex-col justify-between p-4 sm:p-6 bg-gradient-to-b from-indigo-950 via-purple-950 to-slate-950 text-white text-center overflow-x-hidden">
       {/* Top Bar */}
@@ -20,7 +23,7 @@ export default function PlayerLobby({ player, pin }: PlayerLobbyProps) {
 
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold">
           <Wifi className="w-3.5 h-3.5 animate-pulse" />
-          <span>Trực tuyến</span>
+          <span>{t.onlineStatus}</span>
         </div>
       </div>
 
@@ -43,17 +46,17 @@ export default function PlayerLobby({ player, pin }: PlayerLobbyProps) {
 
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs sm:text-sm font-bold mb-4">
           <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-          <span>Bạn đã vào phòng thi đấu!</span>
+          <span>{t.inRoomBadge}</span>
         </div>
 
         <p className="text-slate-400 text-xs sm:text-sm max-w-xs leading-relaxed px-2">
-          Hãy nhìn lên <span className="text-white font-bold">màn hình lớn của Host</span>. Trò chơi sẽ bắt đầu trong giây lát!
+          {t.lookAtHostScreen}
         </p>
       </div>
 
       {/* Footer Info */}
       <div className="p-3 sm:p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 text-xs text-slate-400 max-w-sm mx-auto w-full">
-        Mẹo: Câu trả lời càng nhanh thì số điểm nhận được càng cao!
+        {t.speedTip}
       </div>
     </div>
   );

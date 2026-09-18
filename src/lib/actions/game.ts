@@ -334,7 +334,22 @@ export async function submitPlayerAnswer(
     const cleanSubmitted = submittedAnswer.trim().toLowerCase();
 
     // Check correctness by type
-    if (question.type === 'multiple_choice' || question.type === 'true_false') {
+    if (question.type === 'true_false') {
+      const target = String(question.correct_answer).trim().toLowerCase();
+      const isTargetTrue = target.includes('đúng') || target.includes('true');
+      const isTargetFalse = target.includes('sai') || target.includes('false');
+
+      const isSubmittedTrue = cleanSubmitted.includes('đúng') || cleanSubmitted.includes('true');
+      const isSubmittedFalse = cleanSubmitted.includes('sai') || cleanSubmitted.includes('false');
+
+      if (isTargetTrue && isSubmittedTrue) {
+        isCorrect = true;
+      } else if (isTargetFalse && isSubmittedFalse) {
+        isCorrect = true;
+      } else {
+        isCorrect = cleanSubmitted === target;
+      }
+    } else if (question.type === 'multiple_choice') {
       const target = String(question.correct_answer).trim().toLowerCase();
       isCorrect = cleanSubmitted === target;
     } else if (question.type === 'fill_in_the_blank') {

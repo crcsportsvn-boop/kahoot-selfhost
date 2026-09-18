@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Triangle, Diamond, Circle, Square, Check, X, Users, FastForward } from 'lucide-react';
 import { Question } from '@/types';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface HostQuestionViewProps {
   question: Question;
@@ -22,6 +23,7 @@ export default function HostQuestionView({
   totalPlayers,
   onTimeUp
 }: HostQuestionViewProps) {
+  const { t, lang } = useLanguage();
   const [timeLeft, setTimeLeft] = useState(question.time_limit || 20);
   const { playCountdownTick, playTimesUp } = useSoundEffects();
 
@@ -62,13 +64,18 @@ export default function HostQuestionView({
     { color: 'bg-emerald-600', borderColor: 'border-emerald-400/40', icon: Square, label: 'D' },
   ];
 
+  const displayTrue = lang === 'vi' ? 'Đúng' : 'True';
+  const displayFalse = lang === 'vi' ? 'Sai' : 'False';
+
   return (
     <div className="w-full min-h-[calc(100dvh-4rem)] flex flex-col justify-between p-4 sm:p-6 lg:p-8 bg-slate-950 text-white relative">
       {/* Top Header: Progress & Timer */}
       <div className="flex items-center justify-between gap-4 pb-3">
         {/* Question Counter Pill */}
         <div className="px-4 sm:px-5 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 font-extrabold text-xs sm:text-base shadow-lg">
-          Câu hỏi <span className="text-indigo-400 font-mono text-base sm:text-lg">{questionIndex + 1}</span> / {totalQuestions}
+          <span>{t.questionWord} </span>
+          <span className="text-indigo-400 font-mono text-base sm:text-lg">{questionIndex + 1}</span>
+          <span className="text-slate-500"> / {totalQuestions}</span>
         </div>
 
         {/* Circular Countdown Timer */}
@@ -107,7 +114,8 @@ export default function HostQuestionView({
           <div className="px-4 sm:px-5 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 font-extrabold text-xs sm:text-base flex items-center gap-2 shadow-lg">
             <Users className="w-4 h-4 text-purple-400" />
             <span>
-              <span className="text-purple-400 font-mono text-base sm:text-lg">{answeredCount}</span> / {totalPlayers}
+              <span className="text-purple-400 font-mono text-base sm:text-lg">{answeredCount}</span>
+              <span className="text-slate-500"> / {totalPlayers} {t.answersWord}</span>
             </span>
           </div>
 
@@ -119,7 +127,7 @@ export default function HostQuestionView({
             className="px-3 sm:px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer"
             title="Kết thúc thời gian làm bài ngay"
           >
-            <span>Hết giờ ngay</span>
+            <span className="hidden sm:inline">{t.skipNowBtn}</span>
             <FastForward className="w-4 h-4" />
           </button>
         </div>

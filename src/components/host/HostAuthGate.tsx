@@ -2,12 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { Lock, KeyRound, ArrowRight, ShieldCheck } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+import LanguageToggle from '@/components/common/LanguageToggle';
 
 interface HostAuthGateProps {
   children: React.ReactNode;
 }
 
 export default function HostAuthGate({ children }: HostAuthGateProps) {
+  const { t } = useLanguage();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +33,7 @@ export default function HostAuthGate({ children }: HostAuthGateProps) {
       setIsAuthenticated(true);
       setError(null);
     } else {
-      setError('Mật khẩu không chính xác. Vui lòng thử lại!');
+      setError(t.passwordError);
       setPassword('');
     }
   };
@@ -50,6 +53,11 @@ export default function HostAuthGate({ children }: HostAuthGateProps) {
 
   return (
     <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center p-4 bg-slate-950 text-slate-100 overflow-hidden relative">
+      {/* Top right language switch */}
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageToggle />
+      </div>
+
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
 
@@ -58,9 +66,9 @@ export default function HostAuthGate({ children }: HostAuthGateProps) {
           <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center mx-auto shadow-inner">
             <Lock className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-black text-white">Khu Vực Quản Trị Viên</h1>
+          <h1 className="text-2xl font-black text-white">{t.adminArea}</h1>
           <p className="text-xs text-slate-400">
-            Vui lòng nhập mật khẩu xác thực để truy cập Dashboard Quản Lý Bộ Đề:
+            {t.passwordPrompt}
           </p>
         </div>
 
@@ -75,7 +83,7 @@ export default function HostAuthGate({ children }: HostAuthGateProps) {
                 setPassword(e.target.value);
                 setError(null);
               }}
-              placeholder="Nhập mã bảo vệ..."
+              placeholder={t.passwordPlaceholder}
               className="w-full text-center text-2xl font-mono font-bold tracking-widest py-3.5 px-4 rounded-2xl bg-slate-950 border-2 border-slate-700 focus:border-indigo-500 text-white placeholder:text-slate-600 outline-none transition"
             />
             <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
@@ -94,7 +102,7 @@ export default function HostAuthGate({ children }: HostAuthGateProps) {
             disabled={!password.trim()}
             className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-98 text-white font-bold text-base shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 disabled:opacity-50 transition cursor-pointer"
           >
-            <span>Mở Khóa Quản Trị</span>
+            <span>{t.unlock}</span>
             <ArrowRight className="w-5 h-5" />
           </button>
         </form>
@@ -102,7 +110,7 @@ export default function HostAuthGate({ children }: HostAuthGateProps) {
         <div className="mt-6 pt-4 border-t border-slate-800 text-center">
           <span className="text-[11px] text-slate-500 inline-flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            Bảo mật phiên đăng nhập quản trị
+            {t.securedSession}
           </span>
         </div>
       </div>

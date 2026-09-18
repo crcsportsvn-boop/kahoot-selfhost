@@ -123,17 +123,17 @@ export async function parseQuizFile(file: File): Promise<ParseResult> {
         }
       }
     } else if (type === 'true_false') {
-      options = ['Đúng (True)', 'Sai (False)'];
+      options = ['Đúng', 'Sai'];
       const rawCorrect = (normalizedRow['correct_answer'] || '').toLowerCase();
       if (!rawCorrect) {
-        errors.push('Thiếu đáp án đúng (Correct Answer: True hoặc False)');
+        errors.push('Thiếu đáp án đúng (Correct Answer: Đúng hoặc Sai / True hoặc False)');
       } else if (rawCorrect.includes('true') || rawCorrect.includes('đúng') || rawCorrect.includes('dung') || rawCorrect === '1' || rawCorrect === 't') {
-        correctAnswer = 'Đúng (True)';
+        correctAnswer = 'Đúng';
       } else if (rawCorrect.includes('false') || rawCorrect.includes('sai') || rawCorrect === '0' || rawCorrect === 'f') {
-        correctAnswer = 'Sai (False)';
+        correctAnswer = 'Sai';
       } else {
         correctAnswer = rawCorrect;
-        errors.push('Đáp án Đúng/Sai phải là "True", "False", "Đúng" hoặc "Sai"');
+        errors.push('Đáp án Đúng/Sai phải là "Đúng", "Sai", "True" hoặc "False"');
       }
     } else if (type === 'fill_in_the_blank') {
       options = [];

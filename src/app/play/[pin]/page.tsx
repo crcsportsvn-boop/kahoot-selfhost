@@ -4,6 +4,8 @@ import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AudioControl from '@/components/common/AudioControl';
+import LanguageToggle from '@/components/common/LanguageToggle';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import QuestionInput from '@/components/player/QuestionInput';
 import PlayerLobby from '@/components/player/PlayerLobby';
 import PlayerAnsweredView from '@/components/player/PlayerAnsweredView';
@@ -29,6 +31,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   const { pin } = use(params);
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useLanguage();
 
   // Player state
   const [player, setPlayer] = useState<Player | null>(null);
@@ -54,7 +57,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nickname.trim()) {
-      setJoinError('Vui lòng nhập biệt danh');
+      setJoinError(t.nicknameRequired);
       return;
     }
 
@@ -68,10 +71,10 @@ export default function PlayPage({ params }: PlayPageProps) {
         setSessionId(res.sessionId);
         setPlayerView('lobby');
       } else {
-        setJoinError(res.error || 'Không thể tham gia phòng');
+        setJoinError(res.error || t.joinRoomError);
       }
     } catch {
-      setJoinError('Lỗi kết nối máy chủ');
+      setJoinError(t.serverError);
     } finally {
       setJoining(false);
     }
@@ -195,7 +198,10 @@ export default function PlayPage({ params }: PlayPageProps) {
           </span>
         </div>
 
-        <AudioControl />
+        <div className="flex items-center gap-2">
+          <LanguageToggle variant="compact" />
+          <AudioControl />
+        </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center p-3 sm:p-4 w-full max-w-full">
@@ -204,16 +210,16 @@ export default function PlayPage({ params }: PlayPageProps) {
           <div className="w-full max-w-md p-5 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-xl animate-in zoom-in-95">
             <div className="text-center mb-5">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold font-mono mb-2">
-                MÃ PHÒNG: {pin}
+                PIN: {pin}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white">Chọn Biệt Danh</h1>
-              <p className="text-xs text-slate-400 mt-1">Chọn linh vật đại diện và tên của bạn để thi đấu</p>
+              <h1 className="text-2xl sm:text-3xl font-black text-white">{t.chooseNicknameTitle}</h1>
+              <p className="text-xs text-slate-400 mt-1">{t.chooseNicknameDesc}</p>
             </div>
 
             {/* Avatar Selector */}
             <div className="mb-5">
               <label className="block text-xs uppercase font-extrabold tracking-wider text-slate-400 mb-2 text-center">
-                Chọn Avatar
+                {t.chooseAvatar}
               </label>
               <div className="flex flex-wrap justify-center gap-2">
                 {AVATARS.map(av => (
@@ -241,7 +247,7 @@ export default function PlayPage({ params }: PlayPageProps) {
                   maxLength={18}
                   value={nickname}
                   onChange={e => setNickname(e.target.value)}
-                  placeholder="Nhập tên của bạn..."
+                  placeholder={t.nicknameInputPlaceholder}
                   className="w-full text-center text-lg sm:text-xl font-bold py-3.5 px-4 rounded-2xl bg-slate-950 border-2 border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-white placeholder:text-slate-600 outline-none transition"
                   autoFocus
                 />
@@ -259,11 +265,11 @@ export default function PlayPage({ params }: PlayPageProps) {
                 {joining ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Đang vào phòng...</span>
+                    <span>{t.joiningText}</span>
                   </>
                 ) : (
                   <>
-                    <span>Sẵn Sàng Tham Gia!</span>
+                    <span>{t.readyToJoinBtn}</span>
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
@@ -283,8 +289,8 @@ export default function PlayPage({ params }: PlayPageProps) {
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mx-auto shadow-2xl">
               <Sparkles className="w-10 h-10 sm:w-12 sm:h-12" />
             </div>
-            <h2 className="text-3xl sm:text-5xl font-black text-white">Chuẩn Bị...</h2>
-            <p className="text-slate-400 text-xs sm:text-sm">Câu hỏi sắp xuất hiện trên màn hình!</p>
+            <h2 className="text-3xl sm:text-5xl font-black text-white">{t.getReadyTitle}</h2>
+            <p className="text-slate-400 text-xs sm:text-sm">{t.questionComing}</p>
           </div>
         )}
 
@@ -293,10 +299,10 @@ export default function PlayPage({ params }: PlayPageProps) {
           <div className="w-full max-w-2xl flex-1 flex flex-col justify-between py-1 sm:py-2">
             <div className="flex items-center justify-between px-3 pb-2">
               <span className="text-xs font-mono text-purple-300 font-bold">
-                Câu {currentQuestionIndex + 1} / {totalQuestions}
+                {t.questionWord} {currentQuestionIndex + 1} / {totalQuestions}
               </span>
               <span className="text-xs font-mono font-bold text-yellow-300">
-                {player?.score ?? 0} điểm
+                {player?.score ?? 0} {t.pointsWord}
               </span>
             </div>
 
@@ -305,7 +311,7 @@ export default function PlayPage({ params }: PlayPageProps) {
               <div className="max-h-36 sm:max-h-48 mb-2 flex justify-center">
                 <img
                   src={currentQuestion.media_url}
-                  alt="Hình minh họa"
+                  alt="Question Image"
                   className="max-h-32 sm:max-h-44 rounded-xl object-contain border border-slate-700 shadow"
                 />
               </div>
@@ -339,12 +345,12 @@ export default function PlayPage({ params }: PlayPageProps) {
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mx-auto text-amber-300">
               <Trophy className="w-8 h-8 sm:w-10 sm:h-10 animate-bounce" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-white">Bảng Xếp Hạng!</h2>
+            <h2 className="text-2xl sm:text-3xl font-black text-white">{t.leaderboardTitle}</h2>
             <p className="text-xs sm:text-sm text-slate-400">
-              Hãy quan sát màn hình Host để xem vị trí và thứ tự xếp hạng của bạn!
+              {t.watchHostLeaderboard}
             </p>
             <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-              <span className="text-xs text-slate-400 block mb-1">Điểm số hiện tại</span>
+              <span className="text-xs text-slate-400 block mb-1">{t.currentScore}</span>
               <span className="font-mono font-black text-2xl sm:text-3xl text-yellow-300">
                 {player?.score.toLocaleString()}
               </span>
@@ -358,24 +364,24 @@ export default function PlayPage({ params }: PlayPageProps) {
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center mx-auto text-yellow-300 shadow-2xl">
               <Award className="w-10 h-10 sm:w-12 sm:h-12" />
             </div>
-            <h1 className="text-2xl sm:text-4xl font-black text-white">Trò Chơi Kết Thúc!</h1>
+            <h1 className="text-2xl sm:text-4xl font-black text-white">{t.gameOverTitle}</h1>
             {podiumRank ? (
               <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/20 border border-amber-500/40">
                 <span className="text-xs text-amber-300 font-bold uppercase tracking-wider block mb-1">
-                  Chúc mừng bạn!
+                  {t.congratsTop}
                 </span>
                 <p className="text-lg sm:text-xl font-black text-white">
-                  Bạn đã lọt vào <span className="text-yellow-300 font-mono">TOP {podiumRank}</span> của phòng thi!
+                  {t.topPodiumMessage} <span className="text-yellow-300 font-mono">TOP {podiumRank}</span>!
                 </p>
               </div>
             ) : (
               <p className="text-xs sm:text-sm text-slate-400">
-                Bạn đã thi đấu rất xuất sắc! Hãy nhìn lên màn hình lớn của Host để xem bục vinh danh toàn thể phòng chơi.
+                {t.greatJobPodium}
               </p>
             )}
 
             <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-              <span className="text-xs text-slate-400 block mb-1">Tổng điểm chung cuộc</span>
+              <span className="text-xs text-slate-400 block mb-1">{t.finalScoreLabel}</span>
               <span className="font-mono font-black text-2xl sm:text-3xl text-yellow-300">
                 {player?.score.toLocaleString()}
               </span>

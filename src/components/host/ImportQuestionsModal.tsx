@@ -3,17 +3,20 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, FileSpreadsheet, Download, CheckCircle2, AlertCircle, X, Loader2 } from 'lucide-react';
 import { parseQuizFile, downloadSampleExcelTemplate, ParsedQuestionRow } from '@/lib/excel/parseQuizFile';
-import { addQuestionsToQuiz } from '@/lib/actions/quiz';
+import { addQuestionsToQuiz, createQuizWithQuestions } from '@/lib/actions/quiz';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface ImportQuestionsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  quizId: string;
+  quizId?: string | null;
   onSuccess: () => void;
 }
 
 export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSuccess }: ImportQuestionsModalProps) {
+  const { t, lang } = useLanguage();
   const [file, setFile] = useState<File | null>(null);
+  const [quizTitle, setQuizTitle] = useState('');
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [parsedRows, setParsedRows] = useState<ParsedQuestionRow[]>([]);
@@ -27,14 +30,20 @@ export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSucces
     setErrorMessage(null);
     setParsing(true);
 
+    // Auto generate quiz title from filename if not set
+    if (!quizTitle && !quizId) {
+      const cleanName = selectedFile.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+      setQuizTitle(cleanName);
+    }
+
     try {
       const result = await parseQuizFile(selectedFile);
       setParsedRows(result.questions);
       if (result.questions.length === 0) {
-        setErrorMessage('Không tìm thấy dữ liệu câu hỏi trong tệp.');
+        setErrorMessage(lang === 'vi' ? 'Không tìm thấy dữ liệu câu hỏi trong tệp.' : 'No question data found in the spreadsheet.');
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi đọc tệp Excel/CSV';
+      const msg = err instanceof Error ? err.message : (lang === 'vi' ? 'Lỗi khi đọc tệp Excel/CSV' : 'Error reading Excel/CSV file');
       setErrorMessage(msg);
       setParsedRows([]);
     } finally {
@@ -57,23 +66,41 @@ export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSucces
     setErrorMessage(null);
 
     try {
-      const payload = validQuestions.map(q => ({
+      const payload = validQuestions.map((q, idx) => ({
         type: q.type,
         prompt: q.prompt,
         options: q.options,
         correct_answer: q.correct_answer,
-        time_limit: q.time_limit
+        time_limit: q.time_limit,
+        order_index: idx
       }));
 
-      const res = await addQuestionsToQuiz(quizId, payload);
-      if (res.success) {
-        onSuccess();
-        onClose();
+      if (quizId) {
+        // Append to existing quiz
+        const res = await addQuestionsToQuiz(quizId, payload);
+        if (res.success) {
+          onSuccess();
+          onClose();
+        } else {
+          setErrorMessage(res.error || (lang === 'vi' ? 'Lỗi khi lưu câu hỏi vào cơ sở dữ liệu' : 'Error saving questions'));
+        }
       } else {
-        setErrorMessage(res.error || 'Lỗi khi lưu câu hỏi vào cơ sở dữ liệu');
+        // Direct creation of a new quiz
+        const finalTitle = quizTitle.trim() || (lang === 'vi' ? 'Bộ đề tải lên từ bảng tính' : 'Spreadsheet Imported Quiz');
+        const finalDesc = lang === 'vi' 
+          ? `Tự động tạo từ tệp ${file?.name || 'Excel/CSV'} với ${validQuestions.length} câu hỏi.`
+          : `Created automatically from ${file?.name || 'Excel/CSV'} with ${validQuestions.length} questions.`;
+
+        const res = await createQuizWithQuestions(finalTitle, finalDesc, payload);
+        if (res.success) {
+          onSuccess();
+          onClose();
+        } else {
+          setErrorMessage(res.error || (lang === 'vi' ? 'Lỗi khi tạo bộ đề mới từ file' : 'Error creating quiz'));
+        }
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi hệ thống';
+      const msg = err instanceof Error ? err.message : 'System error';
       setErrorMessage(msg);
     } finally {
       setSaving(false);
@@ -93,13 +120,13 @@ export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSucces
               <FileSpreadsheet className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">Nhập Câu Hỏi từ Excel / CSV</h2>
-              <p className="text-xs text-slate-400">Tự động nhận diện cấu trúc, kiểm tra hợp lệ và tải vào bộ đề</p>
+              <h2 className="text-xl font-bold">{t.importModalTitle}</h2>
+              <p className="text-xs text-slate-400">{t.importModalDesc}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -107,10 +134,26 @@ export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSucces
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          {/* Quiz Title field if creating new quiz */}
+          {!quizId && (
+            <div className="space-y-1.5 p-4 rounded-xl bg-slate-800/40 border border-slate-700/60">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                {t.quizNamePrompt}
+              </label>
+              <input
+                type="text"
+                value={quizTitle}
+                onChange={(e) => setQuizTitle(e.target.value)}
+                placeholder={lang === 'vi' ? 'Nhập tên bộ đề (VD: Đố vui công nghệ 2026...)' : 'Enter quiz title (e.g. 2026 Tech Trivia...)'}
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 focus:outline-none text-white text-sm"
+              />
+            </div>
+          )}
+
           {/* Action Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/60">
             <div className="text-sm text-slate-300">
-              Chưa có file mẫu? Tải tệp mẫu chuẩn để điền câu hỏi dễ dàng:
+              {t.downloadSamplePrompt}
             </div>
             <button
               onClick={downloadSampleExcelTemplate}
@@ -118,7 +161,7 @@ export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSucces
               className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/20 transition cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              Tải file mẫu Excel (.xlsx)
+              {t.downloadSampleBtn} (.xlsx)
             </button>
           </div>
 
@@ -151,9 +194,9 @@ export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSucces
 
             <div>
               <p className="font-semibold text-slate-200">
-                {file ? `Đã chọn: ${file.name}` : 'Kéo thả tệp Excel (.xlsx, .xls) hoặc CSV vào đây'}
+                {file ? `${lang === 'vi' ? 'Đã chọn' : 'Selected'}: ${file.name}` : t.dragDropText}
               </p>
-              <p className="text-xs text-slate-400 mt-1">hoặc nhấn để chọn tệp từ máy tính của bạn</p>
+              <p className="text-xs text-slate-400 mt-1">{t.orClickToPick}</p>
             </div>
           </div>
 
@@ -161,7 +204,7 @@ export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSucces
           {parsing && (
             <div className="flex items-center justify-center gap-3 py-6 text-indigo-400">
               <Loader2 className="w-6 h-6 animate-spin" />
-              <span>Đang phân tích và kiểm tra dữ liệu bảng tính...</span>
+              <span>{t.parsingText}</span>
             </div>
           )}
 
@@ -170,7 +213,7 @@ export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSucces
             <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm flex items-start gap-3">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold">Lỗi xử lý:</p>
+                <p className="font-semibold">{lang === 'vi' ? 'Lỗi xử lý:' : 'Error:'}</p>
                 <p>{errorMessage}</p>
               </div>
             </div>
@@ -181,19 +224,19 @@ export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSucces
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-slate-200 flex items-center gap-2">
-                  <span>Bản xem trước dữ liệu</span>
+                  <span>{t.previewTitle}</span>
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300">
-                    {parsedRows.length} câu hỏi
+                    {parsedRows.length} {t.questionsCount}
                   </span>
                 </h3>
 
                 <div className="flex items-center gap-3 text-xs">
                   <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                    <CheckCircle2 className="w-4 h-4" /> Hợp lệ: {validCount}
+                    <CheckCircle2 className="w-4 h-4" /> {t.validText}: {validCount}
                   </span>
                   {invalidCount > 0 && (
                     <span className="flex items-center gap-1.5 text-rose-400 font-medium">
-                      <AlertCircle className="w-4 h-4" /> Không hợp lệ: {invalidCount}
+                      <AlertCircle className="w-4 h-4" /> {t.invalidText}: {invalidCount}
                     </span>
                   )}
                 </div>
@@ -204,13 +247,13 @@ export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSucces
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="bg-slate-800/80 sticky top-0 text-slate-300 font-semibold border-b border-slate-700">
                     <tr>
-                      <th className="p-3">Hàng</th>
-                      <th className="p-3">Loại</th>
-                      <th className="p-3 min-w-[200px]">Câu hỏi</th>
-                      <th className="p-3 min-w-[160px]">Phương án</th>
-                      <th className="p-3 min-w-[120px]">Đáp án đúng</th>
-                      <th className="p-3">Thời gian</th>
-                      <th className="p-3">Trạng thái</th>
+                      <th className="p-3">{t.rowCol}</th>
+                      <th className="p-3">{t.typeCol}</th>
+                      <th className="p-3 min-w-[200px]">{t.questionCol}</th>
+                      <th className="p-3 min-w-[160px]">{t.optionsCol}</th>
+                      <th className="p-3 min-w-[120px]">{t.correctCol}</th>
+                      <th className="p-3">{t.timeCol}</th>
+                      <th className="p-3">{t.statusCol}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
@@ -233,10 +276,10 @@ export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSucces
                             }`}
                           >
                             {row.type === 'multiple_choice'
-                              ? 'Trắc nghiệm'
+                              ? t.typeMultipleChoice.split(' ')[0]
                               : row.type === 'true_false'
-                              ? 'Đúng / Sai'
-                              : 'Điền từ'}
+                              ? t.typeTrueFalse
+                              : t.typeFillBlank.split(' ')[0]}
                           </span>
                         </td>
                         <td className="p-3 text-slate-200 font-medium">{row.prompt}</td>
@@ -276,24 +319,24 @@ export default function ImportQuestionsModal({ isOpen, onClose, quizId, onSucces
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition"
+            className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition cursor-pointer"
           >
-            Đóng
+            {t.cancelBtn}
           </button>
 
           <button
             type="button"
             disabled={validCount === 0 || saving}
             onClick={handleSave}
-            className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-600/30 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-600/30 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
           >
             {saving ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Đang lưu vào bộ đề...</span>
+                <span>{t.savingText}</span>
               </>
             ) : (
-              <span>Nhập {validCount} câu hỏi hợp lệ</span>
+              <span>{t.saveImportBtn} {validCount} {t.questionsCount}</span>
             )}
           </button>
         </div>

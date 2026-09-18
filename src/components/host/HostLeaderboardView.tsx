@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { Trophy, Flame, ArrowRight, Award } from 'lucide-react';
+import { Trophy, Flame, ArrowRight } from 'lucide-react';
 import { Player } from '@/types';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface HostLeaderboardViewProps {
   players: Player[];
@@ -16,6 +17,7 @@ export default function HostLeaderboardView({
   isLastQuestion,
   onNext
 }: HostLeaderboardViewProps) {
+  const { t, lang } = useLanguage();
   const { playLeaderboard } = useSoundEffects();
 
   useEffect(() => {
@@ -33,8 +35,8 @@ export default function HostLeaderboardView({
             <Trophy className="w-7 h-7" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white">Bảng Xếp Hạng Điểm Số</h1>
-            <p className="text-xs text-slate-400">Top các chiến binh có điểm số cao nhất hiện tại</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-white">{t.leaderboardTitle}</h1>
+            <p className="text-xs text-slate-400">{t.leaderboardSubtitle}</p>
           </div>
         </div>
 
@@ -42,7 +44,7 @@ export default function HostLeaderboardView({
           onClick={onNext}
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-sm sm:text-base shadow-xl shadow-emerald-700/30 transition cursor-pointer"
         >
-          <span>{isLastQuestion ? 'Xem Bục Vinh Danh (Podium)' : 'Câu hỏi tiếp theo'}</span>
+          <span>{isLastQuestion ? t.seePodiumBtn : t.nextQuestionBtn}</span>
           <ArrowRight className="w-5 h-5" />
         </button>
       </div>
@@ -91,7 +93,7 @@ export default function HostLeaderboardView({
                     {player.streak >= 2 && (
                       <span className="inline-flex items-center gap-1 text-xs text-orange-400 font-bold">
                         <Flame className="w-3.5 h-3.5 fill-current" />
-                        <span>Chuỗi {player.streak} câu đúng!</span>
+                        <span>{player.streak} {t.streakFire}</span>
                       </span>
                     )}
                   </div>
@@ -104,7 +106,7 @@ export default function HostLeaderboardView({
                   {player.score.toLocaleString()}
                 </span>
                 <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider block">
-                  Điểm
+                  {t.pointsWord}
                 </span>
               </div>
             </div>
@@ -113,14 +115,14 @@ export default function HostLeaderboardView({
 
         {players.length === 0 && (
           <div className="text-center py-12 text-slate-400">
-            Chưa có người chơi nào ghi được điểm.
+            {lang === 'vi' ? 'Chưa có người chơi nào ghi được điểm.' : 'No players have scored yet.'}
           </div>
         )}
       </div>
 
       {/* Footer hint */}
       <div className="text-center text-xs text-slate-500">
-        Điểm số được tính toán tức thời dựa trên tốc độ và độ chính xác của câu trả lời.
+        {lang === 'vi' ? 'Điểm số được tính toán tức thời dựa trên tốc độ và độ chính xác của câu trả lời.' : 'Scores are calculated in real time based on response speed and correctness.'}
       </div>
     </div>
   );

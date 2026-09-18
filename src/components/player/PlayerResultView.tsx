@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { Check, X, Flame } from 'lucide-react';
 import { AnswerSubmissionResult } from '@/types';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface PlayerResultViewProps {
   result: AnswerSubmissionResult | null;
@@ -11,6 +12,7 @@ interface PlayerResultViewProps {
 }
 
 export default function PlayerResultView({ result, totalScore }: PlayerResultViewProps) {
+  const { t, lang } = useLanguage();
   const { playCorrect, playWrong } = useSoundEffects();
 
   const isCorrect = result?.is_correct ?? false;
@@ -52,20 +54,20 @@ export default function PlayerResultView({ result, totalScore }: PlayerResultVie
         </div>
 
         <h1 className="text-2xl sm:text-4xl font-black mb-1.5">
-          {isCorrect ? 'Chính Xác!' : 'Chưa Đúng Rồi!'}
+          {isCorrect ? t.correctTitle : t.wrongTitle}
         </h1>
 
         <p className="text-xs sm:text-sm text-slate-300 mb-5 max-w-xs px-2">
           {isCorrect
-            ? 'Bạn đã trả lời rất nhanh và chuẩn xác!'
-            : 'Đừng nản lòng, hãy bứt phá ở câu hỏi tiếp theo!'}
+            ? t.correctPraise
+            : t.wrongEncourage}
         </p>
 
         {/* Points Banner */}
         <div className="p-5 sm:p-6 rounded-2xl bg-black/40 border border-white/10 backdrop-blur-md w-full max-w-xs shadow-xl space-y-3">
           <div>
             <span className="text-xs uppercase tracking-wider text-slate-400 font-bold block">
-              Điểm câu này
+              {t.roundPoints}
             </span>
             <span
               className={`text-3xl sm:text-4xl font-mono font-black ${
@@ -77,7 +79,7 @@ export default function PlayerResultView({ result, totalScore }: PlayerResultVie
           </div>
 
           <div className="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Tổng điểm:</span>
+            <span className="text-slate-400">{t.totalScoreLabel}</span>
             <span className="font-mono font-black text-base sm:text-lg text-white">
               {totalScore.toLocaleString()}
             </span>
@@ -86,14 +88,14 @@ export default function PlayerResultView({ result, totalScore }: PlayerResultVie
           {streak >= 2 && (
             <div className="flex items-center justify-center gap-1.5 pt-1 text-xs text-orange-400 font-bold">
               <Flame className="w-3.5 h-3.5 fill-current" />
-              <span>Chuỗi {streak} câu đúng liên tiếp!</span>
+              <span>{streak} {t.streakCount}</span>
             </div>
           )}
         </div>
       </div>
 
       <div className="p-3 sm:p-4 rounded-2xl bg-black/30 border border-white/10 text-xs text-slate-400 max-w-sm mx-auto w-full">
-        Hãy nhìn lên màn hình Host để xem bảng xếp hạng chi tiết!
+        {lang === 'vi' ? 'Hãy nhìn lên màn hình Host để xem bảng xếp hạng chi tiết!' : 'Look at the host screen to see full leaderboard standings!'}
       </div>
     </div>
   );

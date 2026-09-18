@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { CheckCircle2, ArrowRight, Trophy } from 'lucide-react';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { Question } from '@/types';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface HostResultViewProps {
   question: Question;
@@ -17,18 +18,42 @@ export default function HostResultView({
   totalAnswers,
   onNext
 }: HostResultViewProps) {
+  const { t, lang } = useLanguage();
+
   const isCorrect = (opt: string) => {
     const cleanOpt = opt.trim().toLowerCase();
     if (Array.isArray(question.correct_answer)) {
       return question.correct_answer.some(a => String(a).trim().toLowerCase() === cleanOpt);
     }
     const correctClean = String(question.correct_answer).trim().toLowerCase();
+    if (question.type === 'true_false') {
+      const isTargetTrue = correctClean.includes('đúng') || correctClean.includes('true');
+      const isTargetFalse = correctClean.includes('sai') || correctClean.includes('false');
+      if (isTargetTrue && (cleanOpt.includes('đúng') || cleanOpt.includes('true'))) return true;
+      if (isTargetFalse && (cleanOpt.includes('sai') || cleanOpt.includes('false'))) return true;
+    }
     return cleanOpt === correctClean;
   };
 
   const getCount = (opt: string) => {
-    return distribution[opt] || 0;
+    // Check direct match or normalized match
+    let count = distribution[opt] || 0;
+    if (question.type === 'true_false') {
+      const isTrue = opt.toLowerCase().includes('đúng') || opt.toLowerCase().includes('true');
+      Object.entries(distribution).forEach(([key, val]) => {
+        const kLower = key.toLowerCase();
+        if (isTrue && (kLower.includes('đúng') || kLower.includes('true')) && key !== opt) {
+          count += val;
+        } else if (!isTrue && (kLower.includes('sai') || kLower.includes('false')) && key !== opt) {
+          count += val;
+        }
+      });
+    }
+    return count;
   };
+
+  const displayTrue = lang === 'vi' ? 'Đúng' : 'True';
+  const displayFalse = lang === 'vi' ? 'Sai' : 'False';
 
   return (
     <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col justify-between p-4 sm:p-8 bg-slate-950 text-white">
@@ -36,7 +61,7 @@ export default function HostResultView({
       <div className="flex items-center justify-between pb-4 border-b border-slate-800">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 block mb-1">
-            Kết Quả Câu Hỏi
+            {t.questionResultTitle}
           </span>
           <h2 className="text-xl sm:text-3xl font-black text-slate-100">{question.prompt}</h2>
         </div>
@@ -45,7 +70,7 @@ export default function HostResultView({
           onClick={onNext}
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 font-extrabold text-sm sm:text-base text-white shadow-lg shadow-indigo-600/30 transition cursor-pointer"
         >
-          <span>Xem Bảng Xếp Hạng</span>
+          <span>{t.seeLeaderboardBtn}</span>
           <ArrowRight className="w-5 h-5" />
         </button>
       </div>
@@ -98,7 +123,7 @@ export default function HostResultView({
                     <p className="text-xs sm:text-sm line-clamp-2">{opt}</p>
                     {correct && (
                       <span className="text-[10px] text-emerald-400 uppercase font-extrabold tracking-wider block mt-1">
-                        Đáp án đúng
+                        {lang === 'vi' ? 'Đáp án đúng' : 'Correct'}
                       </span>
                     )}
                   </div>
@@ -110,11 +135,11 @@ export default function HostResultView({
 
         {question.type === 'true_false' && (
           <div className="grid grid-cols-2 gap-6 items-end min-h-[300px] p-6 bg-slate-900/60 rounded-3xl border border-slate-800">
-            {question.options.map((opt, idx) => {
-              const count = getCount(opt);
+            {[displayTrue, displayFalse].map((label, idx) => {
+              const count = getCount(label);
               const maxCount = Math.max(1, ...Object.values(distribution), totalAnswers);
               const heightPercent = totalAnswers > 0 ? Math.max(12, (count / maxCount) * 100) : 12;
-              const correct = isCorrect(opt);
+              const correct = isCorrect(label);
 
               return (
                 <div key={idx} className="flex flex-col items-center justify-end h-full gap-3">
@@ -138,10 +163,10 @@ export default function HostResultView({
                         : 'border-slate-800 bg-slate-900 text-slate-300'
                     }`}
                   >
-                    <p className="text-lg font-bold">{opt}</p>
+                    <p className="text-2xl font-black">{label}</p>
                     {correct && (
                       <span className="text-xs text-emerald-400 uppercase font-extrabold block mt-1">
-                        Đáp án đúng
+                        {lang === 'vi' ? 'Đáp án đúng' : 'Correct'}
                       </span>
                     )}
                   </div>
@@ -155,7 +180,7 @@ export default function HostResultView({
           <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 text-center space-y-6">
             <div>
               <span className="text-xs text-indigo-400 uppercase font-bold tracking-widest block mb-2">
-                Đáp án được chấp nhận:
+                {t.acceptedAnswers}
               </span>
               <div className="inline-flex flex-wrap gap-2 justify-center">
                 {Array.isArray(question.correct_answer) ? (
@@ -176,7 +201,7 @@ export default function HostResultView({
             </div>
 
             <div className="text-sm text-slate-400">
-              Tổng số người chơi đã tham gia trả lời: <span className="font-bold text-white font-mono">{totalAnswers}</span>
+              {t.totalAnswersCount} <span className="font-bold text-white font-mono">{totalAnswers}</span>
             </div>
           </div>
         )}
@@ -184,7 +209,7 @@ export default function HostResultView({
 
       {/* Footer Info */}
       <div className="text-center text-xs text-slate-500">
-        Nhấn &quot;Xem Bảng Xếp Hạng&quot; để hiển thị điểm số và vị trí các đấu thủ
+        {lang === 'vi' ? 'Nhấn "Xem Bảng Xếp Hạng" để hiển thị điểm số và vị trí các đấu thủ' : 'Click "View Leaderboard" to reveal updated player ranks'}
       </div>
     </div>
   );

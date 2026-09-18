@@ -4,8 +4,10 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import Navbar from '@/components/common/Navbar';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 export default function HomePage() {
+  const { t } = useLanguage();
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -14,11 +16,11 @@ export default function HomePage() {
     e.preventDefault();
     const cleanPin = pin.trim();
     if (!cleanPin) {
-      setError('Vui lòng nhập mã PIN');
+      setError(t.enterPinError);
       return;
     }
     if (cleanPin.length < 6) {
-      setError('Mã PIN bao gồm 6 chữ số');
+      setError(t.pinLengthError);
       return;
     }
     router.push(`/play/${cleanPin}`);
@@ -37,19 +39,19 @@ export default function HomePage() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-widest animate-in fade-in">
             <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-            <span>Nền tảng Trắc Nghiệm Thời Gian Thực</span>
+            <span>{t.homeBadge}</span>
           </div>
 
           {/* Title */}
           <div>
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
-              Đấu Trí Trực Tiếp <br />
+              {t.homeHeadline1} <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-pink-400 to-indigo-400">
-                Cực Nhanh, Cực Vui
+                {t.homeHeadline2}
               </span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 mt-2.5 max-w-sm mx-auto">
-              Nhập mã PIN 6 số từ màn hình máy chiếu để tham gia ngay vào vòng thi!
+              {t.homeSubtitle}
             </p>
           </div>
 
@@ -58,7 +60,7 @@ export default function HomePage() {
             <form onSubmit={handleJoin} className="space-y-4">
               <div>
                 <label className="block text-xs uppercase font-extrabold tracking-wider text-slate-400 mb-2">
-                  Nhập Mã PIN Trò Chơi
+                  {t.gamePinLabel}
                 </label>
                 <input
                   type="text"
@@ -82,7 +84,7 @@ export default function HomePage() {
                 type="submit"
                 className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 active:scale-98 text-white font-black text-lg shadow-xl shadow-purple-900/40 flex items-center justify-center gap-2 transition cursor-pointer"
               >
-                <span>Vào Chơi Ngay</span>
+                <span>{t.joinNowBtn}</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
             </form>
