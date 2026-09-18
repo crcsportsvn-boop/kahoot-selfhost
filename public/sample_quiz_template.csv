@@ -1,0 +1,7 @@
+Type,Question,Option A,Option B,Option C,Option D,Correct Answer,Time Limit
+multiple_choice,Thủ đô của Việt Nam là gì?,Đà Nẵng,Hà Nội,Hồ Chí Minh,Cần Thơ,Hà Nội,20
+true_false,Mặt Trời quay quanh Trái Đất có phải không?,,,Đúng (True),Sai (False),Sai (False),15
+fill_in_the_blank,Viết tắt của giao thức truyền tải siêu văn bản an toàn là gì?,,,,,,HTTPS;https,20
+multiple_choice,HTML là viết tắt của cụm từ nào?,Hyperlinks and Text Markup Language,Hyper Text Markup Language,Home Tool Markup Language,Hyperlinking Text Marking Language,Hyper Text Markup Language,20
+true_false,Python là một ngôn ngữ lập trình thông dịch (interpreted language).,,,Đúng (True),Sai (False),Đúng (True),15
+fill_in_the_blank,Bộ nhớ truy cập ngẫu nhiên của máy tính viết tắt là gì?,,,,,,RAM;ram,15
