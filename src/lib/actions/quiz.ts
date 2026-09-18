@@ -70,13 +70,13 @@ export async function createQuizWithQuestions(
     correct_answer: string | string[];
     time_limit: number;
     order_index: number;
+    media_url?: string;
   }>,
   userId?: string
 ) {
   const supabase = createAdminClient();
 
   try {
-    // Determine host id: given userId, or first profile, or mock id
     let effectiveHostId = userId;
     if (!effectiveHostId) {
       const { data: firstProfile } = await supabase.from('profiles').select('id').limit(1).maybeSingle();
@@ -84,11 +84,6 @@ export async function createQuizWithQuestions(
         effectiveHostId = firstProfile.id;
       } else {
         effectiveHostId = '00000000-0000-0000-0000-000000000001';
-        await supabase.from('profiles').upsert({
-          id: effectiveHostId,
-          email: 'host@kahoot.local',
-          full_name: 'Host Master'
-        });
       }
     }
 
@@ -116,7 +111,8 @@ export async function createQuizWithQuestions(
         options: q.options || [],
         correct_answer: q.correct_answer,
         time_limit: q.time_limit || 20,
-        order_index: idx
+        order_index: idx,
+        media_url: q.media_url || null
       }));
 
       const { error: questErr } = await supabase.from('questions').insert(questionsToInsert);
@@ -128,6 +124,65 @@ export async function createQuizWithQuestions(
     return { success: true, quiz: quiz as Quiz };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Lỗi hệ thống khi tạo quiz';
+    return { success: false, error: msg };
+  }
+}
+
+export async function updateQuizWithQuestions(
+  quizId: string,
+  title: string,
+  description: string,
+  questions: Array<{
+    type: 'multiple_choice' | 'true_false' | 'fill_in_the_blank';
+    prompt: string;
+    options: string[];
+    correct_answer: string | string[];
+    time_limit: number;
+    order_index: number;
+    media_url?: string;
+  }>
+) {
+  const supabase = createAdminClient();
+
+  try {
+    // 1. Update quiz title & description
+    const { error: quizErr } = await supabase
+      .from('quizzes')
+      .update({
+        title: title.trim(),
+        description: description.trim(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', quizId);
+
+    if (quizErr) {
+      return { success: false, error: quizErr.message };
+    }
+
+    // 2. Replace questions
+    await supabase.from('questions').delete().eq('quiz_id', quizId);
+
+    if (questions.length > 0) {
+      const payload = questions.map((q, idx) => ({
+        quiz_id: quizId,
+        type: q.type,
+        prompt: q.prompt,
+        options: q.options || [],
+        correct_answer: q.correct_answer,
+        time_limit: q.time_limit || 20,
+        order_index: idx,
+        media_url: q.media_url || null
+      }));
+
+      const { error: questErr } = await supabase.from('questions').insert(payload);
+      if (questErr) {
+        return { success: false, error: 'Lỗi cập nhật câu hỏi: ' + questErr.message };
+      }
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật bộ đề';
     return { success: false, error: msg };
   }
 }
@@ -152,12 +207,12 @@ export async function addQuestionsToQuiz(
     correct_answer: string | string[];
     time_limit: number;
     order_index?: number;
+    media_url?: string;
   }>
 ) {
   const supabase = createAdminClient();
 
   try {
-    // Get highest current order_index
     const { data: current } = await supabase
       .from('questions')
       .select('order_index')
@@ -168,18 +223,16 @@ export async function addQuestionsToQuiz(
 
     let startIndex = (current?.order_index ?? -1) + 1;
 
-    const payload = newQuestions.map(q => {
-      const item = {
-        quiz_id: quizId,
-        type: q.type,
-        prompt: q.prompt,
-        options: q.options || [],
-        correct_answer: q.correct_answer,
-        time_limit: q.time_limit || 20,
-        order_index: startIndex++
-      };
-      return item;
-    });
+    const payload = newQuestions.map(q => ({
+      quiz_id: quizId,
+      type: q.type,
+      prompt: q.prompt,
+      options: q.options || [],
+      correct_answer: q.correct_answer,
+      time_limit: q.time_limit || 20,
+      order_index: startIndex++,
+      media_url: q.media_url || null
+    }));
 
     const { error } = await supabase.from('questions').insert(payload);
     if (error) {

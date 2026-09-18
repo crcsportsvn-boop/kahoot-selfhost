@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import Navbar from '@/components/common/Navbar';
+import AudioControl from '@/components/common/AudioControl';
 import QuestionInput from '@/components/player/QuestionInput';
 import PlayerLobby from '@/components/player/PlayerLobby';
 import PlayerAnsweredView from '@/components/player/PlayerAnsweredView';
@@ -39,7 +39,6 @@ export default function PlayPage({ params }: PlayPageProps) {
   const [joinError, setJoinError] = useState<string | null>(null);
 
   // Game cycle state
-  // 'enter_nickname' | 'lobby' | 'get_ready' | 'answering' | 'answered' | 'result' | 'leaderboard' | 'game_over'
   const [playerView, setPlayerView] = useState<
     'enter_nickname' | 'lobby' | 'get_ready' | 'answering' | 'answered' | 'result' | 'leaderboard' | 'game_over'
   >('enter_nickname');
@@ -109,9 +108,8 @@ export default function PlayPage({ params }: PlayPageProps) {
       setPlayerView('answering');
     });
 
-    // 3. Listen for TIMES_UP
-    channel.on('broadcast', { event: 'TIMES_UP' }, (payload) => {
-      const data = payload.payload as TimesUpPayload;
+    // 3. Listen for TIMES_UP (triggers immediately when all players answer or time runs out!)
+    channel.on('broadcast', { event: 'TIMES_UP' }, () => {
       setPlayerView('result');
     });
 
@@ -185,15 +183,27 @@ export default function PlayPage({ params }: PlayPageProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 select-none">
-      <Navbar />
+    <div className="min-h-[100dvh] w-full max-w-full flex flex-col bg-slate-950 text-slate-100 select-none overflow-x-hidden">
+      {/* Compact dedicated Player Game Header */}
+      <header className="w-full max-w-full px-3 sm:px-4 h-12 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/90 shrink-0 sticky top-0 z-40">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-pink-500 flex items-center justify-center text-white font-black text-sm shadow">
+            K!
+          </div>
+          <span className="font-mono text-xs font-bold text-slate-300">
+            PIN: <span className="text-yellow-300 font-extrabold">{pin}</span>
+          </span>
+        </div>
 
-      <main className="flex-1 flex flex-col items-center justify-center p-4">
+        <AudioControl />
+      </header>
+
+      <main className="flex-1 flex flex-col items-center justify-center p-3 sm:p-4 w-full max-w-full">
         {/* STEP 1: Enter Nickname & Pick Avatar */}
         {playerView === 'enter_nickname' && (
-          <div className="w-full max-w-md p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-xl animate-in zoom-in-95">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold font-mono mb-2">
+          <div className="w-full max-w-md p-5 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-xl animate-in zoom-in-95">
+            <div className="text-center mb-5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold font-mono mb-2">
                 MÃ PHÒNG: {pin}
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white">Chọn Biệt Danh</h1>
@@ -201,7 +211,7 @@ export default function PlayPage({ params }: PlayPageProps) {
             </div>
 
             {/* Avatar Selector */}
-            <div className="mb-6">
+            <div className="mb-5">
               <label className="block text-xs uppercase font-extrabold tracking-wider text-slate-400 mb-2 text-center">
                 Chọn Avatar
               </label>
@@ -211,7 +221,7 @@ export default function PlayPage({ params }: PlayPageProps) {
                     key={av}
                     type="button"
                     onClick={() => setSelectedAvatar(av)}
-                    className={`w-11 h-11 rounded-2xl text-2xl flex items-center justify-center transition cursor-pointer ${
+                    className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl text-xl sm:text-2xl flex items-center justify-center transition cursor-pointer ${
                       selectedAvatar === av
                         ? 'bg-purple-600 scale-110 shadow-lg shadow-purple-600/40 ring-2 ring-white'
                         : 'bg-slate-800 hover:bg-slate-700'
@@ -231,7 +241,7 @@ export default function PlayPage({ params }: PlayPageProps) {
                   maxLength={18}
                   value={nickname}
                   onChange={e => setNickname(e.target.value)}
-                  placeholder="Nhập tên / biệt danh của bạn..."
+                  placeholder="Nhập tên của bạn..."
                   className="w-full text-center text-lg sm:text-xl font-bold py-3.5 px-4 rounded-2xl bg-slate-950 border-2 border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-white placeholder:text-slate-600 outline-none transition"
                   autoFocus
                 />
@@ -244,7 +254,7 @@ export default function PlayPage({ params }: PlayPageProps) {
               <button
                 type="submit"
                 disabled={joining || !nickname.trim()}
-                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-green-600 hover:from-emerald-400 hover:to-green-500 active:scale-98 text-white font-black text-lg shadow-xl shadow-emerald-700/30 flex items-center justify-center gap-2 disabled:opacity-50 transition cursor-pointer"
+                className="w-full py-3.5 sm:py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-green-600 hover:from-emerald-400 hover:to-green-500 active:scale-98 text-white font-black text-base sm:text-lg shadow-xl shadow-emerald-700/30 flex items-center justify-center gap-2 disabled:opacity-50 transition cursor-pointer"
               >
                 {joining ? (
                   <>
@@ -270,18 +280,18 @@ export default function PlayPage({ params }: PlayPageProps) {
         {/* STEP 3: Get Ready Countdown */}
         {playerView === 'get_ready' && (
           <div className="text-center space-y-4 animate-pulse">
-            <div className="w-24 h-24 rounded-3xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mx-auto shadow-2xl">
-              <Sparkles className="w-12 h-12" />
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mx-auto shadow-2xl">
+              <Sparkles className="w-10 h-10 sm:w-12 sm:h-12" />
             </div>
             <h2 className="text-3xl sm:text-5xl font-black text-white">Chuẩn Bị...</h2>
-            <p className="text-slate-400 text-sm">Câu hỏi sắp xuất hiện trên màn hình!</p>
+            <p className="text-slate-400 text-xs sm:text-sm">Câu hỏi sắp xuất hiện trên màn hình!</p>
           </div>
         )}
 
         {/* STEP 4: Answering Active Question */}
         {playerView === 'answering' && currentQuestion && (
-          <div className="w-full max-w-2xl flex-1 flex flex-col justify-between py-2">
-            <div className="flex items-center justify-between px-4 pb-2">
+          <div className="w-full max-w-2xl flex-1 flex flex-col justify-between py-1 sm:py-2">
+            <div className="flex items-center justify-between px-3 pb-2">
               <span className="text-xs font-mono text-purple-300 font-bold">
                 Câu {currentQuestionIndex + 1} / {totalQuestions}
               </span>
@@ -290,7 +300,18 @@ export default function PlayPage({ params }: PlayPageProps) {
               </span>
             </div>
 
-            <div className="flex-1 flex items-center justify-center">
+            {/* If question has image */}
+            {currentQuestion.media_url && (
+              <div className="max-h-36 sm:max-h-48 mb-2 flex justify-center">
+                <img
+                  src={currentQuestion.media_url}
+                  alt="Hình minh họa"
+                  className="max-h-32 sm:max-h-44 rounded-xl object-contain border border-slate-700 shadow"
+                />
+              </div>
+            )}
+
+            <div className="flex-1 flex items-center justify-center w-full">
               <QuestionInput
                 question={currentQuestion}
                 onAnswer={handleAnswer}
@@ -314,9 +335,9 @@ export default function PlayPage({ params }: PlayPageProps) {
 
         {/* STEP 7: Leaderboard Intermission */}
         {playerView === 'leaderboard' && (
-          <div className="text-center space-y-4 max-w-sm">
-            <div className="w-20 h-20 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mx-auto text-amber-300">
-              <Trophy className="w-10 h-10 animate-bounce" />
+          <div className="text-center space-y-4 max-w-sm w-full px-2">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mx-auto text-amber-300">
+              <Trophy className="w-8 h-8 sm:w-10 sm:h-10 animate-bounce" />
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-white">Bảng Xếp Hạng!</h2>
             <p className="text-xs sm:text-sm text-slate-400">
@@ -324,7 +345,7 @@ export default function PlayPage({ params }: PlayPageProps) {
             </p>
             <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
               <span className="text-xs text-slate-400 block mb-1">Điểm số hiện tại</span>
-              <span className="font-mono font-black text-3xl text-yellow-300">
+              <span className="font-mono font-black text-2xl sm:text-3xl text-yellow-300">
                 {player?.score.toLocaleString()}
               </span>
             </div>
@@ -333,29 +354,29 @@ export default function PlayPage({ params }: PlayPageProps) {
 
         {/* STEP 8: Game Over Podium */}
         {playerView === 'game_over' && (
-          <div className="text-center space-y-4 max-w-sm animate-in zoom-in-95">
-            <div className="w-24 h-24 rounded-3xl bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center mx-auto text-yellow-300 shadow-2xl">
-              <Award className="w-12 h-12" />
+          <div className="text-center space-y-4 max-w-sm w-full px-2 animate-in zoom-in-95">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center mx-auto text-yellow-300 shadow-2xl">
+              <Award className="w-10 h-10 sm:w-12 sm:h-12" />
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black text-white">Trò Chơi Kết Thúc!</h1>
+            <h1 className="text-2xl sm:text-4xl font-black text-white">Trò Chơi Kết Thúc!</h1>
             {podiumRank ? (
-              <div className="p-5 rounded-2xl bg-amber-500/20 border border-amber-500/40">
+              <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/20 border border-amber-500/40">
                 <span className="text-xs text-amber-300 font-bold uppercase tracking-wider block mb-1">
                   Chúc mừng bạn!
                 </span>
-                <p className="text-xl font-black text-white">
+                <p className="text-lg sm:text-xl font-black text-white">
                   Bạn đã lọt vào <span className="text-yellow-300 font-mono">TOP {podiumRank}</span> của phòng thi!
                 </p>
               </div>
             ) : (
-              <p className="text-sm text-slate-400">
+              <p className="text-xs sm:text-sm text-slate-400">
                 Bạn đã thi đấu rất xuất sắc! Hãy nhìn lên màn hình lớn của Host để xem bục vinh danh toàn thể phòng chơi.
               </p>
             )}
 
             <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
               <span className="text-xs text-slate-400 block mb-1">Tổng điểm chung cuộc</span>
-              <span className="font-mono font-black text-3xl text-yellow-300">
+              <span className="font-mono font-black text-2xl sm:text-3xl text-yellow-300">
                 {player?.score.toLocaleString()}
               </span>
             </div>

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, use } from 'react';
+import React, { useEffect, useState, useCallback, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Navbar from '@/components/common/Navbar';
+import HostAuthGate from '@/components/host/HostAuthGate';
 import LobbyView from '@/components/host/LobbyView';
 import HostQuestionView from '@/components/host/HostQuestionView';
 import HostResultView from '@/components/host/HostResultView';
@@ -38,6 +39,12 @@ export default function HostGamePage({ params }: PageProps) {
   const [distribution, setDistribution] = useState<Record<string, number>>({});
   const [totalAnswers, setTotalAnswers] = useState(0);
   const [isStarting, setIsStarting] = useState(false);
+
+  // Refs for callbacks inside listeners
+  const playersRef = useRef<Player[]>([]);
+  playersRef.current = players;
+  const statusRef = useRef<SessionStatus>('lobby');
+  statusRef.current = currentStatus;
 
   // Load game session details
   const loadGameData = useCallback(async () => {
@@ -82,6 +89,45 @@ export default function HostGamePage({ params }: PageProps) {
     loadGameData();
   }, [loadGameData]);
 
+  // Helper to broadcast to players
+  const broadcastEvent = useCallback(async (event: string, payload: Record<string, unknown>) => {
+    const channel = supabase.channel(`game_sessions:${pin}`);
+    await channel.send({
+      type: 'broadcast',
+      event,
+      payload
+    });
+  }, [pin, supabase]);
+
+  // ACTION: Question Time's Up
+  const handleTimeUp = useCallback(async () => {
+    if (!session || questions.length === 0) return;
+    const currentQ = questions[currentQuestionIndex];
+    if (!currentQ) return;
+
+    try {
+      await updateSessionState(session.id, {
+        status: 'question_result'
+      });
+
+      // Fetch answer distribution
+      const { distribution: dist, totalAnswers: total } = await getAnswerDistribution(session.id, currentQ.id);
+      setDistribution(dist);
+      setTotalAnswers(total);
+
+      // Broadcast TIMES_UP with result & correct answer
+      await broadcastEvent('TIMES_UP', {
+        question_id: currentQ.id,
+        correct_answer: currentQ.correct_answer,
+        answer_distribution: dist
+      });
+
+      setCurrentStatus('question_result');
+    } catch {
+      // ignore
+    }
+  }, [session, questions, currentQuestionIndex, broadcastEvent]);
+
   // Setup Supabase Realtime Channel: Presence & Broadcast
   useEffect(() => {
     if (!session) return;
@@ -95,25 +141,25 @@ export default function HostGamePage({ params }: PageProps) {
       }
     });
 
-    // 1. Presence Sync: Track connected players in room
+    // 1. Presence Sync
     channel
       .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const connectedNicknames = new Set<string>();
-
-        Object.values(state).forEach((presences) => {
-          (presences as Array<{ nickname?: string }>).forEach(p => {
-            if (p.nickname) connectedNicknames.add(p.nickname);
-          });
-        });
-      })
-      .on('presence', { event: 'join' }, ({ newPresences }) => {
-        // Player joined presence
+        // Sync
       });
 
     // 2. Broadcast Listener: When a player submits an answer
     channel.on('broadcast', { event: 'PLAYER_SUBMITTED' }, () => {
-      setAnsweredCount(prev => prev + 1);
+      setAnsweredCount(prev => {
+        const next = prev + 1;
+        const totalConnected = playersRef.current.length;
+        // If ALL connected players have answered, immediately end question!
+        if (totalConnected > 0 && next >= totalConnected && statusRef.current === 'question') {
+          setTimeout(() => {
+            handleTimeUp();
+          }, 300);
+        }
+        return next;
+      });
     });
 
     // 3. Postgres Changes: Listen for new player insertions in this session
@@ -149,7 +195,6 @@ export default function HostGamePage({ params }: PageProps) {
       }
     );
 
-    // Subscribe to channel
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await channel.track({ role: 'host' });
@@ -159,17 +204,7 @@ export default function HostGamePage({ params }: PageProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session, pin, supabase]);
-
-  // Helper to broadcast to players
-  const broadcastEvent = useCallback(async (event: string, payload: Record<string, unknown>) => {
-    const channel = supabase.channel(`game_sessions:${pin}`);
-    await channel.send({
-      type: 'broadcast',
-      event,
-      payload
-    });
-  }, [pin, supabase]);
+  }, [session, pin, supabase, handleTimeUp]);
 
   // ACTION: Start Game
   const handleStartGame = async () => {
@@ -189,7 +224,7 @@ export default function HostGamePage({ params }: PageProps) {
         total_questions: questions.length
       });
 
-      // Broadcast NEW_QUESTION (Notice: correct_answer is strictly omitted for security!)
+      // Broadcast NEW_QUESTION with media_url
       const q = questions[0];
       await broadcastEvent('NEW_QUESTION', {
         question_index: 0,
@@ -200,7 +235,8 @@ export default function HostGamePage({ params }: PageProps) {
           prompt: q.prompt,
           options: q.options,
           time_limit: q.time_limit,
-          order_index: q.order_index
+          order_index: q.order_index,
+          media_url: q.media_url
         },
         start_time: now
       });
@@ -212,35 +248,6 @@ export default function HostGamePage({ params }: PageProps) {
       alert('Lỗi khi bắt đầu trò chơi');
     } finally {
       setIsStarting(false);
-    }
-  };
-
-  // ACTION: Question Time's Up
-  const handleTimeUp = async () => {
-    if (!session || questions.length === 0) return;
-    const currentQ = questions[currentQuestionIndex];
-    if (!currentQ) return;
-
-    try {
-      await updateSessionState(session.id, {
-        status: 'question_result'
-      });
-
-      // Fetch answer distribution
-      const { distribution: dist, totalAnswers: total } = await getAnswerDistribution(session.id, currentQ.id);
-      setDistribution(dist);
-      setTotalAnswers(total);
-
-      // Broadcast TIMES_UP with result & correct answer
-      await broadcastEvent('TIMES_UP', {
-        question_id: currentQ.id,
-        correct_answer: currentQ.correct_answer,
-        answer_distribution: dist
-      });
-
-      setCurrentStatus('question_result');
-    } catch {
-      // ignore
     }
   };
 
@@ -274,7 +281,6 @@ export default function HostGamePage({ params }: PageProps) {
     const isLast = nextIndex >= questions.length;
 
     if (isLast) {
-      // Game Over -> Podium
       await updateSessionState(session.id, {
         status: 'ended'
       });
@@ -286,7 +292,6 @@ export default function HostGamePage({ params }: PageProps) {
 
       setCurrentStatus('ended');
     } else {
-      // Next Question
       const now = new Date().toISOString();
       await updateSessionState(session.id, {
         status: 'question',
@@ -304,7 +309,8 @@ export default function HostGamePage({ params }: PageProps) {
           prompt: nextQ.prompt,
           options: nextQ.options,
           time_limit: nextQ.time_limit,
-          order_index: nextQ.order_index
+          order_index: nextQ.order_index,
+          media_url: nextQ.media_url
         },
         start_time: now
       });
@@ -328,58 +334,60 @@ export default function HostGamePage({ params }: PageProps) {
   const isLastQuestion = currentQuestionIndex >= questions.length - 1;
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 select-none">
-      <Navbar />
+    <HostAuthGate>
+      <div className="min-h-[100dvh] flex flex-col bg-slate-950 text-slate-100 select-none overflow-x-hidden">
+        <Navbar showHostLink={true} />
 
-      <main className="flex-1 flex flex-col">
-        {currentStatus === 'lobby' && (
-          <LobbyView
-            pin={pin}
-            quizTitle={quizTitle}
-            players={players}
-            onStartGame={handleStartGame}
-            isStarting={isStarting}
-          />
-        )}
+        <main className="flex-1 flex flex-col">
+          {currentStatus === 'lobby' && (
+            <LobbyView
+              pin={pin}
+              quizTitle={quizTitle}
+              players={players}
+              onStartGame={handleStartGame}
+              isStarting={isStarting}
+            />
+          )}
 
-        {currentStatus === 'question' && currentQ && (
-          <HostQuestionView
-            question={currentQ}
-            questionIndex={currentQuestionIndex}
-            totalQuestions={questions.length}
-            answeredCount={answeredCount}
-            totalPlayers={players.length}
-            onTimeUp={handleTimeUp}
-          />
-        )}
+          {currentStatus === 'question' && currentQ && (
+            <HostQuestionView
+              question={currentQ}
+              questionIndex={currentQuestionIndex}
+              totalQuestions={questions.length}
+              answeredCount={answeredCount}
+              totalPlayers={players.length}
+              onTimeUp={handleTimeUp}
+            />
+          )}
 
-        {currentStatus === 'question_result' && currentQ && (
-          <HostResultView
-            question={currentQ}
-            distribution={distribution}
-            totalAnswers={totalAnswers}
-            onNext={handleShowLeaderboard}
-          />
-        )}
+          {currentStatus === 'question_result' && currentQ && (
+            <HostResultView
+              question={currentQ}
+              distribution={distribution}
+              totalAnswers={totalAnswers}
+              onNext={handleShowLeaderboard}
+            />
+          )}
 
-        {currentStatus === 'leaderboard' && (
-          <HostLeaderboardView
-            players={players}
-            isLastQuestion={isLastQuestion}
-            onNext={handleNextQuestionOrEnd}
-          />
-        )}
+          {currentStatus === 'leaderboard' && (
+            <HostLeaderboardView
+              players={players}
+              isLastQuestion={isLastQuestion}
+              onNext={handleNextQuestionOrEnd}
+            />
+          )}
 
-        {currentStatus === 'ended' && (
-          <HostPodiumView
-            players={players}
-            quizTitle={quizTitle}
-            onRestart={() => {
-              handleStartGame();
-            }}
-          />
-        )}
-      </main>
-    </div>
+          {currentStatus === 'ended' && (
+            <HostPodiumView
+              players={players}
+              quizTitle={quizTitle}
+              onRestart={() => {
+                handleStartGame();
+              }}
+            />
+          )}
+        </main>
+      </div>
+    </HostAuthGate>
   );
 }

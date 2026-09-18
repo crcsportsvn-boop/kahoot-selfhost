@@ -1,25 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Plus, Trash2, X, Check, HelpCircle, Loader2 } from 'lucide-react';
-import { QuestionType } from '@/types';
-import { createQuizWithQuestions } from '@/lib/actions/quiz';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, X, Check, HelpCircle, Loader2, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { QuestionType, Quiz, Question } from '@/types';
+import { createQuizWithQuestions, updateQuizWithQuestions } from '@/lib/actions/quiz';
 
 interface QuizEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  quizToEdit?: Quiz | null;
 }
 
 interface QuestionDraft {
+  id?: string;
   type: QuestionType;
   prompt: string;
   options: string[];
   correct_answer: string | string[];
   time_limit: number;
+  media_url?: string;
 }
 
-export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEditorModalProps) {
+const SAMPLE_IMAGES = [
+  { label: 'Công nghệ', url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop&q=80' },
+  { label: 'Vũ trụ', url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=80' },
+  { label: 'Khoa học', url: 'https://images.unsplash.com/photo-1507668077129-56e32842fceb?w=600&auto=format&fit=crop&q=80' },
+  { label: 'Lập trình', url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&auto=format&fit=crop&q=80' },
+];
+
+export default function QuizEditorModal({ isOpen, onClose, onSuccess, quizToEdit }: QuizEditorModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -31,11 +41,50 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
       prompt: '',
       options: ['Phương án A', 'Phương án B', 'Phương án C', 'Phương án D'],
       correct_answer: 'Phương án A',
-      time_limit: 20
+      time_limit: 20,
+      media_url: ''
     }
   ]);
 
+  // Load existing quiz data when quizToEdit changes
+  useEffect(() => {
+    if (quizToEdit) {
+      setTitle(quizToEdit.title || '');
+      setDescription(quizToEdit.description || '');
+
+      if (quizToEdit.questions && quizToEdit.questions.length > 0) {
+        setQuestions(
+          quizToEdit.questions.map((q: Question) => ({
+            id: q.id,
+            type: q.type,
+            prompt: q.prompt,
+            options: q.options || [],
+            correct_answer: q.correct_answer,
+            time_limit: q.time_limit || 20,
+            media_url: q.media_url || ''
+          }))
+        );
+      }
+    } else {
+      setTitle('');
+      setDescription('');
+      setQuestions([
+        {
+          type: 'multiple_choice',
+          prompt: '',
+          options: ['Phương án A', 'Phương án B', 'Phương án C', 'Phương án D'],
+          correct_answer: 'Phương án A',
+          time_limit: 20,
+          media_url: ''
+        }
+      ]);
+    }
+    setError(null);
+  }, [quizToEdit, isOpen]);
+
   if (!isOpen) return null;
+
+  const isEditMode = Boolean(quizToEdit);
 
   const handleAddQuestion = () => {
     setQuestions(prev => [
@@ -45,7 +94,8 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
         prompt: '',
         options: ['Phương án A', 'Phương án B', 'Phương án C', 'Phương án D'],
         correct_answer: 'Phương án A',
-        time_limit: 20
+        time_limit: 20,
+        media_url: ''
       }
     ]);
   };
@@ -69,7 +119,6 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
       const oldVal = q.options[optIndex];
       q.options = [...q.options];
       q.options[optIndex] = val;
-      // If this option was selected as correct answer, update it too
       if (q.correct_answer === oldVal) {
         q.correct_answer = val;
       }
@@ -84,7 +133,6 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
       return;
     }
 
-    // Validate questions
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.prompt.trim()) {
@@ -110,10 +158,17 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
         options: q.type === 'multiple_choice' ? q.options : q.type === 'true_false' ? ['Đúng (True)', 'Sai (False)'] : [],
         correct_answer: q.correct_answer,
         time_limit: q.time_limit || 20,
-        order_index: idx
+        order_index: idx,
+        media_url: q.media_url?.trim() || undefined
       }));
 
-      const res = await createQuizWithQuestions(title, description, payload);
+      let res;
+      if (isEditMode && quizToEdit) {
+        res = await updateQuizWithQuestions(quizToEdit.id, title, description, payload);
+      } else {
+        res = await createQuizWithQuestions(title, description, payload);
+      }
+
       if (res.success) {
         onSuccess();
         onClose();
@@ -129,17 +184,21 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
       <div className="bg-slate-900 border border-slate-700 w-full max-w-4xl rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden text-slate-100">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800 bg-slate-900/90">
+        <div className="flex items-center justify-between px-6 py-4 sm:py-5 border-b border-slate-800 bg-slate-900/90">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
               <HelpCircle className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">Tạo Bộ Câu Hỏi Trắc Nghiệm Mới</h2>
-              <p className="text-xs text-slate-400">Thiết lập các câu hỏi, thời gian và đáp án chuẩn</p>
+              <h2 className="text-xl font-bold text-white">
+                {isEditMode ? 'Chỉnh Sửa Bộ Câu Hỏi' : 'Tạo Bộ Câu Hỏi Mới'}
+              </h2>
+              <p className="text-xs text-slate-400">
+                {isEditMode ? 'Cập nhật câu hỏi, đáp án đúng và hình ảnh minh họa' : 'Thiết lập các câu hỏi, thời gian và đáp án chuẩn'}
+              </p>
             </div>
           </div>
           <button
@@ -151,7 +210,7 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
           {error && (
             <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
               {error}
@@ -159,7 +218,7 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
           )}
 
           {/* Quiz metadata */}
-          <div className="grid grid-cols-1 gap-4 p-5 rounded-2xl bg-slate-800/40 border border-slate-800">
+          <div className="grid grid-cols-1 gap-4 p-4 sm:p-5 rounded-2xl bg-slate-800/40 border border-slate-800">
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
                 Tiêu đề bộ đề *
@@ -169,7 +228,7 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder="VD: Đấu trí Lập Trình & Công Nghệ 2026..."
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-indigo-500 focus:outline-none"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-indigo-500 focus:outline-none"
               />
             </div>
 
@@ -182,7 +241,7 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
                 onChange={e => setDescription(e.target.value)}
                 placeholder="VD: Cuộc thi trắc nghiệm vui dành cho các lập trình viên..."
                 rows={2}
-                className="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-indigo-500 focus:outline-none"
+                className="w-full px-4 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-indigo-500 focus:outline-none"
               />
             </div>
           </div>
@@ -206,7 +265,7 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
             {questions.map((q, idx) => (
               <div
                 key={idx}
-                className="p-5 rounded-2xl bg-slate-800/60 border border-slate-700/80 space-y-4"
+                className="p-4 sm:p-5 rounded-2xl bg-slate-800/60 border border-slate-700/80 space-y-4"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
@@ -242,7 +301,7 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
                               : q.options[0] || ''
                         });
                       }}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-sm focus:border-indigo-500 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-200 text-sm focus:border-indigo-500 focus:outline-none"
                     >
                       <option value="multiple_choice">Trắc nghiệm 4 đáp án</option>
                       <option value="true_false">Đúng / Sai</option>
@@ -275,8 +334,55 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
                     value={q.prompt}
                     onChange={e => handleUpdateQuestion(idx, { prompt: e.target.value })}
                     placeholder="VD: Ai là người phát minh ra World Wide Web?"
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-indigo-500 focus:outline-none"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-indigo-500 focus:outline-none"
                   />
+                </div>
+
+                {/* Media Image URL (New Feature!) */}
+                <div className="space-y-2 p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Link hình ảnh minh họa (tùy chọn)</span>
+                    </label>
+                    <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                      <span>Ảnh mẫu nhanh:</span>
+                      {SAMPLE_IMAGES.map((s, sIdx) => (
+                        <button
+                          key={sIdx}
+                          type="button"
+                          onClick={() => handleUpdateQuestion(idx, { media_url: s.url })}
+                          className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-white transition"
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <input
+                    type="url"
+                    value={q.media_url || ''}
+                    onChange={e => handleUpdateQuestion(idx, { media_url: e.target.value })}
+                    placeholder="Dán link ảnh (https://...) hiển thị trên màn hình chiếu"
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 text-xs focus:border-indigo-500 focus:outline-none"
+                  />
+
+                  {q.media_url && (
+                    <div className="flex items-center gap-3 pt-1">
+                      <img
+                        src={q.media_url}
+                        alt="Preview"
+                        className="w-20 h-14 object-cover rounded-lg border border-slate-700 shadow"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                      <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" /> Đã nhận diện link ảnh
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Options based on type */}
@@ -294,7 +400,7 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
                             className={`flex items-center gap-2 p-2 rounded-xl border ${
                               isCorrect
                                 ? 'border-emerald-500/60 bg-emerald-950/20'
-                                : 'border-slate-700 bg-slate-900'
+                                : 'border-slate-700 bg-slate-950'
                             }`}
                           >
                             <button
@@ -332,7 +438,7 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
                         className={`flex-1 py-2.5 rounded-xl border text-sm font-bold transition cursor-pointer ${
                           q.correct_answer === tf
                             ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-                            : 'bg-slate-900 border-slate-700 text-slate-400'
+                            : 'bg-slate-950 border-slate-700 text-slate-400'
                         }`}
                       >
                         {tf} {q.correct_answer === tf && '✓ (Đáp án đúng)'}
@@ -344,14 +450,14 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
                 {q.type === 'fill_in_the_blank' && (
                   <div>
                     <label className="block text-xs text-slate-400 mb-1">
-                      Từ khóa đáp án đúng (có thể cách nhau bằng dấu chấm phẩy &quot;;&quot; nếu có nhiều từ đồng nghĩa)
+                      Từ khóa đáp án đúng (cách nhau bằng dấu chấm phẩy &quot;;&quot; nếu có nhiều từ đồng nghĩa)
                     </label>
                     <input
                       type="text"
                       value={Array.isArray(q.correct_answer) ? q.correct_answer.join('; ') : String(q.correct_answer)}
                       onChange={e => handleUpdateQuestion(idx, { correct_answer: e.target.value })}
                       placeholder="VD: H2O; nước; nước tinh khiết"
-                      className="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-indigo-500 focus:outline-none"
+                      className="w-full px-4 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-indigo-500 focus:outline-none"
                     />
                   </div>
                 )}
@@ -382,7 +488,7 @@ export default function QuizEditorModal({ isOpen, onClose, onSuccess }: QuizEdit
                 <span>Đang lưu...</span>
               </>
             ) : (
-              <span>Hoàn tất & Lưu bộ đề</span>
+              <span>{isEditMode ? 'Cập Nhật Bộ Đề' : 'Hoàn Tất & Lưu Bộ Đề'}</span>
             )}
           </button>
         </div>
