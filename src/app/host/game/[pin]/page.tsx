@@ -88,6 +88,7 @@ export default function HostGamePage({ params }: PageProps) {
   playersRef.current = players;
   const statusRef = useRef<SessionStatus>('lobby');
   statusRef.current = currentStatus;
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Load game session details
   const loadGameData = useCallback(async () => {
@@ -134,12 +135,16 @@ export default function HostGamePage({ params }: PageProps) {
 
   // Helper to broadcast to players
   const broadcastEvent = useCallback(async (event: string, payload: Record<string, unknown>) => {
-    const channel = supabase.channel(`game_sessions:${pin}`);
-    await channel.send({
-      type: 'broadcast',
-      event,
-      payload
-    });
+    try {
+      const activeChannel = channelRef.current || supabase.channel(`game_sessions:${pin}`);
+      await activeChannel.send({
+        type: 'broadcast',
+        event,
+        payload
+      });
+    } catch {
+      // ignore
+    }
   }, [pin, supabase]);
 
   // ACTION: Question Time's Up
@@ -178,11 +183,13 @@ export default function HostGamePage({ params }: PageProps) {
     const channelName = `game_sessions:${pin}`;
     const channel = supabase.channel(channelName, {
       config: {
+        broadcast: { ack: true },
         presence: {
           key: 'host'
         }
       }
     });
+    channelRef.current = channel;
 
     // Broadcast Listener: When a player submits an answer
     channel.on('broadcast', { event: 'PLAYER_SUBMITTED' }, () => {

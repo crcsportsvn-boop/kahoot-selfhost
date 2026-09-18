@@ -10,7 +10,8 @@ import QuestionInput from '@/components/player/QuestionInput';
 import PlayerLobby from '@/components/player/PlayerLobby';
 import PlayerAnsweredView from '@/components/player/PlayerAnsweredView';
 import PlayerResultView from '@/components/player/PlayerResultView';
-import { joinGameSession, submitPlayerAnswer } from '@/lib/actions/game';
+import AvatarPickerModal from '@/components/player/AvatarPickerModal';
+import { joinGameSession, submitPlayerAnswer, getSessionCurrentQuestion } from '@/lib/actions/game';
 import {
   Player,
   PublicQuestion,
@@ -19,7 +20,7 @@ import {
   TimesUpPayload,
   GameOverPayload
 } from '@/types';
-import { Sparkles, ArrowRight, Loader2, Trophy, Award } from 'lucide-react';
+import { Sparkles, ArrowRight, Loader2, Trophy, Award, MoreHorizontal } from 'lucide-react';
 
 interface PlayPageProps {
   params: Promise<{ pin: string }>;
@@ -31,13 +32,14 @@ export default function PlayPage({ params }: PlayPageProps) {
   const { pin } = use(params);
   const router = useRouter();
   const supabase = createClient();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   // Player state
   const [player, setPlayer] = useState<Player | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [nickname, setNickname] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('🦊');
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 
@@ -87,6 +89,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     const channelName = `game_sessions:${pin}`;
     const channel = supabase.channel(channelName, {
       config: {
+        broadcast: { ack: true },
         presence: {
           key: player.id
         }
@@ -97,18 +100,20 @@ export default function PlayPage({ params }: PlayPageProps) {
     channel.on('broadcast', { event: 'GAME_START' }, (payload) => {
       const data = payload.payload as { total_questions: number };
       setTotalQuestions(data.total_questions);
-      setPlayerView('get_ready');
+      setPlayerView(prev => (prev === 'lobby' ? 'get_ready' : prev));
     });
 
     // 2. Listen for NEW_QUESTION
     channel.on('broadcast', { event: 'NEW_QUESTION' }, (payload) => {
       const data = payload.payload as NewQuestionPayload;
-      setCurrentQuestion(data.question);
-      setCurrentQuestionIndex(data.question_index);
-      setTotalQuestions(data.total_questions);
-      setSubmittedAnswer('');
-      setAnswerResult(null);
-      setPlayerView('answering');
+      if (data && data.question) {
+        setCurrentQuestion(data.question);
+        setCurrentQuestionIndex(data.question_index);
+        setTotalQuestions(data.total_questions);
+        setSubmittedAnswer('');
+        setAnswerResult(null);
+        setPlayerView('answering');
+      }
     });
 
     // 3. Listen for TIMES_UP (triggers immediately when all players answer or time runs out!)
@@ -132,6 +137,35 @@ export default function PlayPage({ params }: PlayPageProps) {
       }
       setPlayerView('game_over');
     });
+
+    // 6. Robust Fallback: Listen for Postgres database changes on game_sessions
+    channel.on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'game_sessions',
+        filter: `id=eq.${sessionId}`
+      },
+      async (payload) => {
+        const newSession = payload.new as { status: string; current_question_index: number };
+        if (newSession.status === 'question') {
+          const res = await getSessionCurrentQuestion(sessionId);
+          if (res.success && res.question) {
+            setCurrentQuestion(res.question);
+            setCurrentQuestionIndex(res.questionIndex ?? newSession.current_question_index);
+            setTotalQuestions(res.totalQuestions ?? 0);
+            setPlayerView(prev => (prev === 'answered' ? 'answered' : 'answering'));
+          }
+        } else if (newSession.status === 'question_result') {
+          setPlayerView('result');
+        } else if (newSession.status === 'leaderboard') {
+          setPlayerView('leaderboard');
+        } else if (newSession.status === 'ended') {
+          setPlayerView('game_over');
+        }
+      }
+    );
 
     // Track presence
     channel.subscribe(async (status) => {
@@ -236,7 +270,34 @@ export default function PlayPage({ params }: PlayPageProps) {
                     {av}
                   </button>
                 ))}
+
+                {/* If selected avatar is not in quick list, show it */}
+                {!AVATARS.includes(selectedAvatar) && (
+                  <button
+                    type="button"
+                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl text-xl sm:text-2xl flex items-center justify-center bg-purple-600 scale-110 shadow-lg shadow-purple-600/40 ring-2 ring-white transition"
+                  >
+                    {selectedAvatar}
+                  </button>
+                )}
+
+                {/* More Avatars Button (...) */}
+                <button
+                  type="button"
+                  onClick={() => setIsAvatarModalOpen(true)}
+                  title={lang === 'vi' ? 'Thêm linh vật khác...' : 'More avatars...'}
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/40 text-indigo-300 flex items-center justify-center transition cursor-pointer"
+                >
+                  <MoreHorizontal className="w-5 h-5" />
+                </button>
               </div>
+
+              <AvatarPickerModal
+                isOpen={isAvatarModalOpen}
+                onClose={() => setIsAvatarModalOpen(false)}
+                onSelect={(av) => setSelectedAvatar(av)}
+                selectedAvatar={selectedAvatar}
+              />
             </div>
 
             {/* Form */}

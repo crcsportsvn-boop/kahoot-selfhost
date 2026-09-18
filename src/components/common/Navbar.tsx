@@ -2,16 +2,24 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, Lock } from 'lucide-react';
 import AudioControl from './AudioControl';
 import LanguageToggle from './LanguageToggle';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface NavbarProps {
   showHostLink?: boolean;
+  showAudioControl?: boolean;
+  showLockButton?: boolean;
+  onLock?: () => void;
 }
 
-export default function Navbar({ showHostLink = false }: NavbarProps) {
+export default function Navbar({
+  showHostLink = false,
+  showAudioControl = true,
+  showLockButton = false,
+  onLock
+}: NavbarProps) {
   const { t } = useLanguage();
 
   return (
@@ -39,14 +47,26 @@ export default function Navbar({ showHostLink = false }: NavbarProps) {
           {showHostLink && (
             <Link
               href="/host/dashboard"
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-xl bg-indigo-600/20 text-indigo-300 hover:text-white border border-indigo-500/30 hover:bg-indigo-600/30 transition shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-xl bg-indigo-600/20 text-indigo-300 hover:text-white border border-indigo-500/30 hover:bg-indigo-600/30 transition shadow-sm"
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{t.hostDashboard}</span>
             </Link>
           )}
 
-          <AudioControl />
+          {showLockButton && onLock && (
+            <button
+              type="button"
+              onClick={onLock}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-xl bg-rose-500/10 text-rose-300 hover:text-rose-200 border border-rose-500/30 hover:bg-rose-500/20 transition cursor-pointer"
+              title={t.lock}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>{t.lock}</span>
+            </button>
+          )}
+
+          {showAudioControl && <AudioControl />}
         </div>
       </div>
     </header>

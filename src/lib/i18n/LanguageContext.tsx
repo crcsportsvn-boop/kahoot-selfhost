@@ -45,6 +45,15 @@ export const translations = {
     createFirstQuiz: 'Tạo Bộ Đề Đầu Tiên',
     confirmDeleteQuiz: 'Bạn có chắc chắn muốn xóa bộ đề này cùng toàn bộ câu hỏi?',
     loadingQuizzes: 'Đang tải danh sách bộ đề từ Supabase...',
+    searchPlaceholder: 'Tìm kiếm bộ câu hỏi theo tên hoặc mô tả...',
+    allFolders: 'Tất Cả',
+    createFolderBtn: '+ Thư Mục Mới',
+    newFolderPrompt: 'Nhập tên thư mục mới:',
+    confirmDeleteFolder: 'Bạn có chắc muốn xóa thư mục này? Các bộ đề sẽ được giữ nguyên ở "Tất Cả".',
+    moveToFolder: 'Thư mục',
+    noFolder: 'Chưa phân loại',
+    exportExcelBtn: 'Xuất Excel',
+    exportSuccess: 'Đã xuất file Excel thành công!',
 
     // Quiz Editor Modal
     editQuizTitle: 'Chỉnh Sửa Bộ Câu Hỏi',
@@ -232,6 +241,15 @@ export const translations = {
     createFirstQuiz: 'Create First Quiz',
     confirmDeleteQuiz: 'Are you sure you want to delete this quiz and all its questions?',
     loadingQuizzes: 'Loading quizzes from Supabase...',
+    searchPlaceholder: 'Search quizzes by title or description...',
+    allFolders: 'All',
+    createFolderBtn: '+ New Folder',
+    newFolderPrompt: 'Enter new folder name:',
+    confirmDeleteFolder: 'Are you sure you want to delete this folder? Quizzes inside will be kept in "All".',
+    moveToFolder: 'Folder',
+    noFolder: 'Uncategorized',
+    exportExcelBtn: 'Export Excel',
+    exportSuccess: 'Quiz exported to Excel successfully!',
 
     // Quiz Editor Modal
     editQuizTitle: 'Edit Quiz Collection',

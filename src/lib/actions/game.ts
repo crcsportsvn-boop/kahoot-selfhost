@@ -480,3 +480,46 @@ export async function getSessionLeaderboard(sessionId: string, limit: number = 1
     rank: index + 1
   }));
 }
+
+/**
+ * Fetch Current Active Question for Player Sync
+ */
+export async function getSessionCurrentQuestion(sessionId: string) {
+  const supabase = createAdminClient();
+
+  try {
+    const { data: session, error: sessionErr } = await supabase
+      .from('game_sessions')
+      .select('id, quiz_id, status, current_question_index')
+      .eq('id', sessionId)
+      .single();
+
+    if (sessionErr || !session) {
+      return { success: false, error: 'Session not found' };
+    }
+
+    const { data: questions, error: qErr } = await supabase
+      .from('questions')
+      .select('id, type, prompt, options, time_limit, order_index, media_url')
+      .eq('quiz_id', session.quiz_id)
+      .order('order_index', { ascending: true });
+
+    if (qErr || !questions || questions.length === 0) {
+      return { success: false, error: 'No questions found' };
+    }
+
+    const activeQuestion = questions[session.current_question_index] || questions[0];
+
+    return {
+      success: true,
+      status: session.status,
+      questionIndex: session.current_question_index,
+      totalQuestions: questions.length,
+      question: activeQuestion
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Sync error';
+    return { success: false, error: message };
+  }
+}
+
