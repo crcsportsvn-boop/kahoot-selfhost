@@ -10,16 +10,45 @@ declare
   v_host_id uuid;
   v_quiz_id uuid;
 begin
-  -- Look for an existing profile, or create a mock system host profile
-  select id into v_host_id from public.profiles limit 1;
+  -- Look for an existing user in auth.users
+  select id into v_host_id from auth.users order by created_at asc limit 1;
 
   if v_host_id is null then
-    -- Generate a system host id for demo purposes if no user has signed up yet
     v_host_id := '00000000-0000-0000-0000-000000000001'::uuid;
-    insert into public.profiles (id, email, full_name, avatar_url)
-    values (v_host_id, 'demo.host@kahoot.local', 'Kahoot Master', '👑')
-    on conflict (id) do nothing;
+
+    -- Create user in auth.users first to satisfy foreign key constraint
+    insert into auth.users (
+      id,
+      instance_id,
+      aud,
+      role,
+      email,
+      encrypted_password,
+      email_confirmed_at,
+      raw_app_meta_data,
+      raw_user_meta_data,
+      created_at,
+      updated_at
+    ) values (
+      v_host_id,
+      '00000000-0000-0000-0000-000000000000'::uuid,
+      'authenticated',
+      'authenticated',
+      'demo.host@kahoot.local',
+      crypt('kahoot123456', gen_salt('bf')),
+      now(),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{"full_name":"Kahoot Master","avatar_url":"👑"}'::jsonb,
+      now(),
+      now()
+    ) on conflict (id) do nothing;
   end if;
+
+  -- Ensure profile exists in public.profiles
+  insert into public.profiles (id, email, full_name, avatar_url)
+  values (v_host_id, 'demo.host@kahoot.local', 'Kahoot Master', '👑')
+  on conflict (id) do update set
+    full_name = coalesce(profiles.full_name, excluded.full_name);
 
   -- 1. Create Quiz: Đấu Trí Công Nghệ & Khoa Học
   insert into public.quizzes (id, user_id, title, description, created_at)
